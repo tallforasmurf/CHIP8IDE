@@ -201,7 +201,7 @@ At least two of the emulators I've looked at have this incorrect implementation.
 And CowGod's influential CHIP-8 Technical Reference also has it wrong.
 
 The correct interpretation of the shift instructions was clarified in a recent exchange
-at the [Yahoo VIP Group](https://groups.yahoo.com/neo/groups/rcacosmac/conversations/messages/331).
+at the [Yahoo VIP Group](https://groups.yahoo.com/neo/groups/rcacosmac/conversations/messages/328).
 
 
 ## Program Design
