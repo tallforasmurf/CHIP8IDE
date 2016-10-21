@@ -86,7 +86,7 @@ selected, the action depends on the type and contents of the file.
 
 TODO: decide on file suffixes - research traditional ones: .c8?
 
-TODO: can handle binary input?
+TODO: how recognize binary input? formats existing?
 
 If the file is an assembly source file, it is loaded into the Source window.
 If the file is an executable CHIP-8 program it is disassembled and the
@@ -97,9 +97,9 @@ and click Run in the Memory window to execute it.
 The Save command queries for a filename to save the current source file.
 
 (There is no Save operation to make a binary file from the Memory state.
-There is no advantage to being able to save and reload a binary. It takes
-only a click of the Load button and essentially zero time to prepare a source
-file for execution.)
+There is no advantage to being able to save and reload a binary.
+Except for having to click the Load button followed by the Run button,
+it takes basically no time to load and run a source program.)
 
 ## Included Extras
 
@@ -108,14 +108,14 @@ documents and a selection of game programs written for the S/CHIP-8.
 
 ### Documents
 
-* *Assembly Cheat-sheet is a summary of the form of the assembly
+* *Assembly Cheat-sheet* is a summary of the form of the assembly
   language this app supports, including assembler directives and error
   messages.
 
 * *An Easy Programming System* by Joseph Weisbecker is an article that
   appeared in BYTE magazine in 1978. Weisbecker, while employed at RCA,
   designed the CHIP-8 language and interpreter for the COSMAC VIP
-  single-board computer, which he also designed. This article describes
+  single-board computer (which he also designed). This article describes
   the CHIP-8 design and contains a complete game program for the system.
 
 * *COSMAC VIP Manual* is an abbreviated copy of the original RCA manual
@@ -125,8 +125,8 @@ documents and a selection of game programs written for the S/CHIP-8.
 
 ### Games
 
-A large number of CHIP-8 game programs are included in the form of assembly
-source. Some are from the COSMAC VIP Manual, and many more from David
+A large number of CHIP-8 game programs are included as assembly
+source files. Some are from the COSMAC VIP Manual, and many more from David
 Winter's site listed below.
 
 ## About the CHIP-8
@@ -149,30 +149,60 @@ For more on the origin and history of CHIP-8 see the following:
 
 * [Wikipedia article](https://en.wikipedia.org/wiki/CHIP-8) with overview and links.
 
-* Original [COSMAC VIP manual](http://www.mirrorservice.org/sites/www.bitsavers.org/pdf/rca/cosmac/)
+* Online copy of the original [COSMAC VIP manual](http://www.mirrorservice.org/sites/www.bitsavers.org/pdf/rca/cosmac/)
   documents the entire single-board computer in detail, including CHIP-8 programming.
   (Another [online copy](https://www.manualslib.com/manual/602113/Rca-Cdp18s711.html) is incomplete,
-  lacking most of the pages with CHIP-8 game listings.
+  lacking most of the pages with CHIP-8 game listings.)
 
-* [COSMAC VIP page](http://www.oldcomputers.net/rca-cosmac-vip.html) with
-  pictures clearly showing the 16-key keypad.
+* The [COSMAC VIP page](http://www.oldcomputers.net/rca-cosmac-vip.html) at OldComputers.net
+  has good pictures of the original machine.
 
 * [BYTE magazine issue](https://ia802700.us.archive.org/7/items/byte-magazine-1978-12/1978_12_BYTE_03-12_Life.pdf)
-  (large PDF) for December 1978 with article by Joseph Weisbecker, author of CHIP-8, describing it.
+  (large PDF) for December 1978 contains the article by Joseph Weisbecker describing CHIP-8.
   The text of this article is included with the distribution.
 
 * [Mastering CHIP-8](http://mattmik.com/files/chip8/mastering/chip8.html), an essay by Matthew Mikolay,
   has a good technical description of the CHIP-8 but omits the SCHIP features.
 
 * [Matthew Mikolay's Retrocomputing page](http://retro.mattmik.com/) has documents,
-  some program sources, and PDF copies of  all issues of the fanzine VIPER,
+  some program sources, and PDF copies of  all issues of the fanzine *VIPER*,
   in which can be found many CHIP-8 game listings.
-  [Viper issue 1](http://www.mattmik.com/files/viper/Volume1Issue01.pdf) has a lengthy review
-  of the CHIP-8 instructions with tutorial.
+  [*VIPER* issue 1](http://www.mattmik.com/files/viper/Volume1Issue01.pdf) has a lengthy review
+  of the CHIP-8 instructions with a tutorial.
 
 * [CowGod's CHIP-8 page](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM) is probably the most frequently
   cited internet reference, and covers both CHIP-8 and SCHIP features
   (but is incorrect on the shift instructions).
+
+### Undocumented Instructions
+
+The original documentation for CHIP-8 (the VIP manual and the BYTE article, included with this
+distibution, and issue 1 of VIPER) all omit to mention three instructions which were supported
+by the system: shift-left, shift-right, and exclusive-or of machine registers.
+
+It is impossible to know if the omission was a mistake, or perhaps these were added in a
+last-minute update before the VIP shipped.
+At any rate, they were soon discovered by fans who reverse-engineered the 512-byte machine
+language emulator program just out of curiosity.
+The first description of the added instructions appeared in
+[*VIPER* issue 2](http://www.mattmik.com/files/viper/Volume1Issue02.pdf) in a letter to the
+editor from Peter K. Morrison that describes the operation of the emulator.
+(The same issue has another analysis of the emulator code, with flowcharts!)
+
+Morrison's letter correctly describes the operation of the SHR and SHL instructions:
+the value from the source register, VX, is shifted and the result is placed in the
+target register (`VX = VY<<1` or `VX = VY>>1`).
+
+Somehow this became lost over time and an incorrect interpretation has propogated online
+which assumes that the value was shifted in-place (`VY = VY<<1` etc).
+This may have been because most programs that used the instructions *intended* for the
+shift to happen in-place, so they coded the same register number for VX and VY.
+At least two of the emulators I've looked at have this incorrect implementation.
+And CowGod's influential CHIP-8 Technical Reference also has it wrong.
+
+The correct interpretation of the shift instructions was clarified in a recent exchange
+at the [Yahoo VIP Group](https://groups.yahoo.com/neo/groups/rcacosmac/conversations/messages/331).
+
 
 ## Program Design
 
