@@ -129,6 +129,13 @@ A large number of CHIP-8 game programs are included as assembly
 source files. Some are from the COSMAC VIP Manual, and many more from David
 Winter's site listed below.
 
+## >>>CURRENT STATUS<<<
+
+In progress. Emulator module complete. Memory module complete except for
+some small changes. Display module displays the emulated screen; need to
+code the 16-key keypad. Source module, the most complex one, begun.
+
+
 ## About the CHIP-8
 
 CHIP-8 is a virtual machine originally designed for the COSMAC VIP, an early
