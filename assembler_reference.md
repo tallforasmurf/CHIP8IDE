@@ -114,7 +114,7 @@ Directives control the assembly process. The following directives are allowed:
 You may **=** in place of **EQU**.
 
 * **ORG** *expression* Set the assembly location to *expression*,
-possibly skipping over undefined space or possibly returning to 
+possibly skipping over undefined space or possibly returning to
 assemble over bytes assembled previously.
 
 Space reserved by **DS** and space skipped over by **ORG** will be
@@ -250,7 +250,7 @@ would be bad practice to assume that).
 
   Store the contents of *vx* in the timer register. (Fs15)
 
-* **LD** **ST**, *vx*
+* **LD** **ST**, *vs*
 
   Store the contents of *vs* in the sound timer register.
   (There is no instruction for loading the contents from **ST**.) (Fs18)
@@ -271,7 +271,7 @@ would be bad practice to assume that).
   Load **I** with the address of a CHIP-8 (5x4 pixel) character sprite
   for the number in the low four bits of *vs*. (Fs29)
 
-* **LDH** **I**, *vx*
+* **LDH** **I**, *vs*
 
   Load **I** with the address of the SCHIP (10x8 pixel) character sprite
   for the number in the low four bits of *vs*. (Fs30)
@@ -318,7 +318,7 @@ would be bad practice to assume that).
   how many bytes are in the sprite. (A character sprite has either 5 or 10 bytes.)
   If the sprite extends past the right side or bottom row of the display, some pixels
   "wrap" to the left side or top edge. (Dxyn)
-  
+
   If *len* is 0, **I** must address an SCHIP 16x16 sprite, 32 bytes in all.
 
 * **SCD** *rows*
