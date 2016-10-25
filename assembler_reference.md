@@ -108,6 +108,9 @@ Directives control the assembly process. The following directives are allowed:
 
 * **DB** *expression* \[**,** *expression*...\] One or more bytes are assembled.
 
+* **DW** *expression* \[**,** *expression*...\] One or more 16-bit words
+are assembled (convenient for making SCHIP 16x16 sprites).
+
 * **DS** *expression* Reserve *expression* bytes of space.
 
 * *name* **EQU** *expression* Give the value of *expression* to *name*.
