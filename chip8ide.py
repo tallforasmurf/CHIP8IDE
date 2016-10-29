@@ -123,6 +123,12 @@ from PyQt5.QtCore import QSettings
 the_settings = QSettings()
 
 '''
+Uncomment the following to wipe all settings forcing windows
+back to their defaults.
+'''
+#the_settings.clear()
+
+'''
 Import all the modules. This lets Python create their namespaces.
 Call the .initialize() entry of each, passing the QSettings object.
 Each saves a reference to that object to use when it receives the
@@ -144,13 +150,6 @@ import chip8
 
 chip8.initialize( the_settings )
 
-'''
-SUPERHACK FOR TESTING DELETE
-'''
-import binasm
-chip8.reset_vm( binasm.binasm(binasm.P1) )
-
-
 
 '''
    memory.py refers to chip8 and display entry points
@@ -164,9 +163,9 @@ memory.initialize( the_settings )
    source.py refers to chip8 and display entry points
 '''
 
-#import source
+import source
 
-#source.initialize( the_settings )
+source.initialize( the_settings )
 
 '''
 All the windows are visible.
