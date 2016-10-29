@@ -76,9 +76,12 @@ necessary to code Pascal-style, defining all names before they are used.
 '''
 Define this module's API:
    initialize()
+   MONOFONT and MONOFONT_METRICS
+   the RSSButton class
 Really, that's it. It opens the window and away we go.
 '''
-__all__ = [ 'initialize' ]
+__all__ = [ 'initialize', 'MONOFONT', 'MONOFONT_METRICS', 'RSSButton' ]
+
 
 '''
 Import the memory, registers and call stack from the display module.
@@ -132,9 +135,10 @@ from PyQt5.QtWidgets import (
     QWidget
 )
 
+
 '''
 Use Qt facilities to get a monospaced font to use in all widgets.
-Store it in MONOFONT for use from various points.
+Store it in MONOFONT for use from various other modules.
 '''
 
 MONOFONT = None # type QFont
@@ -148,7 +152,6 @@ def initialize_mono_font( ) :
     '''
     MONOFONT = QFontDatabase.systemFont( QFontDatabase.FixedFont )
     MONOFONT_METRICS = QFontMetrics( MONOFONT )
-
 
 '''
 Some widgets require a QBrush with black color for background and a
@@ -166,14 +169,15 @@ class RSSButton( QPushButton ) :
 
     def __init__( self, parent=None ) :
         super().__init__( parent )
-        self.setFont( QFont( MONOFONT ) )
-        self.font().setPointSize( 18 )
-        self.font().setBold( True )
+        font = QFont( MONOFONT )
+        font.setPointSize( 12 )
+        font.setBold( True )
+        self.setFont( font )
 
         metrics = QFontMetrics( self.font() )
         self.setMinimumSize(
             QSize(
-                8 + metrics.width( 'MMMMMMM' ),
+                8 + metrics.width( 'MMMMMMMM' ),
                 8 + metrics.lineSpacing()
                 )
             )
@@ -1034,6 +1038,26 @@ class RunThread( QThread ) :
             Rinse and repeat.
             '''
 
+'''
+
+The step() function is called when the MasterWindow gets a clicked signal
+from the Step pushbutton. Operate the emulator for one instruction.
+
+'''
+
+def step():
+    global STATUS_LINE
+
+    STATUS_LINE.clear()
+
+    result = chip8.step()
+
+    if result is not None :
+        '''
+        chip8 returned some error status, show it.
+        '''
+        STATUS_LINE.setText( result )
+
 
 '''
 
@@ -1076,26 +1100,6 @@ def initialize( settings: QSettings ) -> None :
     Display our window
     '''
     OUR_WINDOW.show()
-
-'''
-
-The step() function is called when the MasterWindow gets a clicked signal
-from the Step pushbutton. Operate the emulator for one instruction.
-
-'''
-
-def step():
-    global STATUS_LINE
-
-    STATUS_LINE.clear()
-
-    result = chip8.step()
-
-    if result is not None :
-        '''
-        chip8 returned some error status, show it.
-        '''
-        STATUS_LINE.setText( result )
 
 
 
