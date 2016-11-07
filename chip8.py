@@ -711,7 +711,7 @@ def decode_Exxx( INST: int, PC: int ) -> int :
 
     reg = (INST & 0x0F00) >> 8
     key = REGS[ reg ] & 0x0F
-    down_key = display.key_test() # a down key or -1
+    down_key = display.key_test() # a down key or None
 
     instruction = INST & 0xF0FF
     if instruction == 0xE09E :
@@ -725,7 +725,7 @@ def decode_Exxx( INST: int, PC: int ) -> int :
     else:
         raise ValueError( emsg_format( EMSG_BAD_INST, INST, PC ) )
 
-    return PC
+    return PC+2
 
 '''
 F007, LD vx, DT
