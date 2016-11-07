@@ -2,12 +2,14 @@
 # CHIP8IDE
 
 CHIP8IDE is a programming and execution environment based on the CHIP-8 and
-SCHIP-48 virtual machines. CHIP-8 is a virtual machine originally designed
-for the COSMAC VIP, an early microcomputer kit. SCHIP is a later enhancement
-written for the HP-48 graphing calculator. (More history is given below.)
+SCHIP-48 virtual machines. CHIP-8 is a virtual machine that was originally
+designed for the COSMAC VIP, an early microcomputer kit, in 1977-78.
+(More fascinating history is given below.)
 
-CHIP8IDE supports entry, editing, assembly, disassembly, execution and
+CHIP8IDE allows entry, editing, assembly, disassembly, execution and
 debugging of programs written for the S/CHIP-8 architecture.
+
+**for current status and to-do list scroll to end**
 
 ## User interface
 
@@ -16,23 +18,20 @@ window, and the Source window; and manages a single menu, the File menu.
 
 ### Display window
 
-The Display window contains the emulated screen output of the program, as a
+The Display window contains the emulated screen output of the program as a
 white-on-black array of square pixels. It has 32x64 pixels in CHIP-8 mode, or
-64x128 pixels in SCHIP mode. The emulated program can change mode with
-machine instructions.
+64x128 pixels in SCHIP mode (selected by the emulated program code).
 
 The Display window also presents an emulated 16-key keypad. When an emulated
 program is running, it can take input from the keypad. The keys can be
-clicked with the mouse or, while the focus is in the Display window, actual
-keystrokes are mapped to the displayed key tops.
-
-You can configure which keys operate which virtual keypad keys by
-(method TBS) TODO.
+clicked with the mouse or, while the focus is in the Display window,
+designated keystrokes are mapped to the displayed key tops.
+The user can configure which keys correspond to the virtual keypad keys.
 
 ### Memory window
 
 The Memory window has a scrolling display of the emulated 4KB of memory. It
-also shows the contents of the CHIP-8 machine registers, and the subroutine
+also shows the contents of the CHIP-8 machine registers and its subroutine
 call-stack. While the emulator is not running, you can edit the contents of
 the displayed memory and the machine registers. It is possible to enter small
 programs directly into memory in hexadecimal.
@@ -40,66 +39,81 @@ programs directly into memory in hexadecimal.
 The Memory window offers a Step button that causes the emulator to execute a
 single instruction and stop.
 
-The Memory window has a Run button to start execution of the emulator. The
-emulator then runs freely until the Run button is clicked again, or an error
-occurs, or a breakpoint is reached. While the emulator is running freely, the
-display window updates and responds to keypad clicks.
+The Memory window has a Run button to start free execution of the emulated
+program.
+The emulator then runs until the Run button is clicked again, or an error
+occurs, or a breakpoint is reached. While the emulator is running, the
+display window shows the program's output and responds to keypad clicks.
 
 The Memory window offers a spinbox for setting the number of emulated
 instructions to execute between 1/60th-second "ticks". This can be set to
 regulate the effective speed of the emulated program.
 
-Also in the Memory window is a message area where error and status messages
-appear, for example when the emulator encounters an illegal instruction the
-error is displayed here.
+Also in the Memory window is a message area for status messages.
+When the emulator has been running and stops, the reason for the stop
+is displayed, for example an illegal instruction or a bad memory reference.
 
 ### Source window
 
 The Source window contains a plain text editor for entering and editing
 CHIP-8 assembly language statements. As statements are entered they are
-parsed and assembled immediately. The assembled hexadecimal value of each
-statement is shown on the same line.
+parsed and lexical errors are diagnosed immediately.
 
-When a statement has incorrect syntax, that line has a pink background and
-its assembled value is $0000.
+Not all errors can be detected while the program is being edited.
+The Source window offers a CHECK button which performs an assembly.
+This identifies errors in expressions, undefined labels, and other
+mistakes that are not evident to lexical parsing.
 
-When a statement refers to a symbol that is not yet defined, it has a yellow
-background and any memory offset value is set to zero. When the symbol is
-defined (or redefined), statements that refer to it are reassembled
-automatically.
+When a statement is in error, it is shown with a pink background.
+When the edit cursor is on an erroneous statement, the cause of the error
+is displayed in a status line below the edit window.
+The user can jump from quickly from error line to error line by keying control-E.
 
-The source window has a Load button, which causes the current value of the
-assembled program to be loaded into the emulator and the emulated program
-state to be cleared (all registers zero and the PC at #200).
+The Source window offers a LOAD button which causes the program to be
+assembled and, if the source is error-free,
+its binary value is loaded into the
+emulator memory and the emulated program
+state is cleared (all registers zero and the PC at #200).
+The user can then start execution with the RUN button in the Memory window
+and interact with the program in the Display window.
 
-You can control-click on any statement to toggle it into a breakpoint, or to
-remove breakpoint status. While the emulator is executing and execution
-reaches a breakpoint line, the emulator stops and the breakpoint line is
-highlighted in the Source window.
+The user can key control-B to toggle any executable source statement into
+a breakpoint or to remove its breakpoint status.
+Breakpoint lines are shown with a light blue background.
+When execution reaches a breakpoint line, the emulator stops.
+
+Whenever the emulator stops execution for any reason, the edit cursor
+moves to the source line matching the current PC.
 
 ### File menu
 
 The program has the following commands in its only menu, the File menu.
 
-The Load command queries the user for a file to open. When a file is
+The New command clears the editor and resets the virtual machine.
+
+The Open command queries the user for a file to open. When a file is
 selected, the action depends on the type and contents of the file.
 
-TODO: decide on file suffixes - research traditional ones: .c8?
+CHIP8IDE tests the content of the selected file.
+If it is an ASCII file, it is assumed to be an assembly source file and
+it is loaded into the Source editor.
 
-TODO: how recognize binary input? formats existing?
+When the file is not ASCII (as determined by the Python `bytes.decode('ASCII')`
+method), the file is assumed to be an executable CHIP-8 program in binary form.
+The file is disassembled and the disassembly source is loaded into the Source
+window.
 
-If the file is an assembly source file, it is loaded into the Source window.
-If the file is an executable CHIP-8 program it is disassembled and the
-disassembly source is loaded into the Source window. In either case, click
-Load in the Source window to put the binary program in the emulated memory,
-and click Run in the Memory window to execute it.
+In either case, the user can immediately click LOAD in the Source window
+to assemble the program into the emulated memory,
+then click RUN in the Memory window to execute it.
 
-The Save command queries for a filename to save the current source file.
-
-(There is no Save operation to make a binary file from the Memory state.
-There is no advantage to being able to save and reload a binary.
-Except for having to click the Load button followed by the Run button,
-it takes basically no time to load and run a source program.)
+The Save command saves the current source file.
+The Save As command queries for a filename to save the current source file.
+There is no Save operation to make a binary file from the Memory state.
+Because both disassembly and assembly are virtually instantaneous,
+there is no time advantage to being able to save and reload a binary.
+Except for having to click LOAD then RUN,
+it takes basically no time to load and run a source program.
 
 ## Included Extras
 
@@ -108,7 +122,7 @@ documents and a selection of game programs written for the S/CHIP-8.
 
 ### Documents
 
-* *Assembly Cheat-sheet* is a summary of the form of the assembly
+* *Assembly Reference* is a summary of the form of the assembly
   language this app supports, including assembler directives and error
   messages.
 
@@ -119,21 +133,16 @@ documents and a selection of game programs written for the S/CHIP-8.
   the CHIP-8 design and contains a complete game program for the system.
 
 * *COSMAC VIP Manual* is an abbreviated copy of the original RCA manual
-  for the VIP. This copy contains only the programming information for
+  for the VIP, containing the programming information for
   the CHIP-8 language and the appendix with source listings for
   more than twenty simple games.
 
 ### Games
 
-A large number of CHIP-8 game programs are included as assembly
-source files. Some are from the COSMAC VIP Manual, and many more from David
-Winter's site listed below.
-
-## >>>CURRENT STATUS<<<
-
-In progress. Emulator module complete. Memory module complete except for
-some small changes. Display module displays the emulated screen; need to
-code the 16-key keypad. Source module, the most complex one, begun.
+A large number of CHIP-8 game programs are included, some as executable
+binaries and some as commented assembler source.
+Some are from the COSMAC VIP Manual; others collected from
+various spots around the internet.
 
 
 ## About the CHIP-8
@@ -144,29 +153,46 @@ microprocessor, 2KB or 4KB of RAM, a 16-key hexadecimal keypad, and an
 interface to a standard television. The VIP was sold by mail-order for $275
 in 1977-78.
 
-The CHIP-8 emulator in ROM made it possible for users to write and play
-simple games. The CHIP-8 language was at a (slightly) higher level than the
+Joseph Weisbecker, who designed the VIP hardware, also designed
+the CHIP-8 emulator in order to make it possible for users to write and play
+simple games without having to learn the machine language of the 1802 microprocessor.
+The CHIP-8 language was at a higher level than the
 machine language of the 1802 chip; in particular it supported graphics
-through sprites, primitive sound output, and input from the 16-key pad. Games
-like Pong and Breakout could be coded in the 4K memory and played enjoyably.
+through sprites, primitive sound output, and input from the 16-key pad.
+Weisbecker coded the entire emulator in 512 bytes of machine code.
+(This is why all CHIP-8 programs load at 0x0200: the emulator itself 
+occupied bytes 0000-0200.)
 
-Later, the SCHIP-48 virtual machine was defined for the HP48 graphing calculator.
-It introduced the higher-resolution (64x128) display and a few other changes.
+Even though there was no assembler -- so the user had to enter code
+directly into memory in hexadecimal -- games
+like Pong and Breakout could be coded and played enjoyably.
+After a program had been entered and debugged, the user could save
+memory to an audio cassette for reloading later.
+Programs were widely shared on audio cassette in the hobbyist community,
+and via the user magazine, *VIPER*.
+
+Later, the SCHIP-48 virtual machine was defined to provide an easy way
+to write games for the HP48 graphing calculator.
+It introduced the higher-resolution (64x128) display and a few other enhancements,
+but was basically the same as the CHIP-8, and CHIP-8 programs could run
+unchanged on the HP-48.
+
 For more on the origin and history of CHIP-8 see the following:
 
 * [Wikipedia article](https://en.wikipedia.org/wiki/CHIP-8) with overview and links.
 
-* Online copy of the original [COSMAC VIP manual](http://www.mirrorservice.org/sites/www.bitsavers.org/pdf/rca/cosmac/)
-  documents the entire single-board computer in detail, including CHIP-8 programming.
-  (Another [online copy](https://www.manualslib.com/manual/602113/Rca-Cdp18s711.html) is incomplete,
-  lacking most of the pages with CHIP-8 game listings.)
-
 * The [COSMAC VIP page](http://www.oldcomputers.net/rca-cosmac-vip.html) at OldComputers.net
   has good pictures of the original machine.
 
-* [BYTE magazine issue](https://ia802700.us.archive.org/7/items/byte-magazine-1978-12/1978_12_BYTE_03-12_Life.pdf)
-  (large PDF) for December 1978 contains the article by Joseph Weisbecker describing CHIP-8.
-  The text of this article is included with the distribution.
+* Online copy of the original [COSMAC VIP manual](http://www.mirrorservice.org/sites/www.bitsavers.org/pdf/rca/cosmac/)
+  documents the entire single-board computer in detail, including its hardware
+  and ROM. The VIP manual distributed with CHIP8IDE was extracted from this source.
+  (Another [online copy](https://www.manualslib.com/manual/602113/Rca-Cdp18s711.html) is incomplete,
+  lacking most of the pages with CHIP-8 game listings.)
+
+* [BYTE magazine for December 1978](https://ia802700.us.archive.org/7/items/byte-magazine-1978-12/1978_12_BYTE_03-12_Life.pdf)
+  (large PDF) contains the article by Joseph Weisbecker describing CHIP-8.
+  A copy of this article is distributed with CHIP8IDE.
 
 * [Mastering CHIP-8](http://mattmik.com/files/chip8/mastering/chip8.html), an essay by Matthew Mikolay,
   has a good technical description of the CHIP-8 but omits the SCHIP features.
@@ -183,27 +209,28 @@ For more on the origin and history of CHIP-8 see the following:
 
 ### Undocumented Instructions
 
-The original documentation for CHIP-8 (the VIP manual and the BYTE article, included with this
-distibution, and issue 1 of VIPER) all omit to mention three instructions which were supported
-by the system: shift-left, shift-right, and exclusive-or of machine registers.
+There are three original sources of documentation for CHIP-8:
+the VIP manual, the BYTE article, and issue 1 of *VIPER*.
+All omit to mention three instructions which were supported by Weisenbecker's
+emulator code: shift-left, shift-right, and exclusive-or of machine registers.
+It is impossible to know if that omission was intentional or a mistake.
+Perhaps the instructions were added in a last-minute update before the VIP shipped.
 
-It is impossible to know if the omission was a mistake, or perhaps these were added in a
-last-minute update before the VIP shipped.
 At any rate, they were soon discovered by fans who reverse-engineered the 512-byte machine
-language emulator program just out of curiosity.
+language emulator program out of curiosity.
 The first description of the added instructions appeared in
 [*VIPER* issue 2](http://www.mattmik.com/files/viper/Volume1Issue02.pdf) in a letter to the
 editor from Peter K. Morrison that describes the operation of the emulator.
 (The same issue has another analysis of the emulator code, with flowcharts!)
 
 Morrison's letter correctly describes the operation of the SHR and SHL instructions:
-the value from the source register, VX, is shifted and the result is placed in the
-target register (`VX = VY<<1` or `VX = VY>>1`).
+the value from the source register, V*s*, is shifted and the result is placed in the
+target register V*t* (`Vt = Vs<<1` and `Vt = Vs>>1`).
 
 Somehow this became lost over time and an incorrect interpretation has propogated online
-which assumes that the value was shifted in-place (`VY = VY<<1` etc).
+which assumes that the value was shifted in-place (`Vt = Vt<<1` etc).
 This may have been because most programs that used the instructions *intended* for the
-shift to happen in-place, so they coded the same register number for VX and VY.
+shift to happen in-place, so they coded the same register number for V*t* and V*s*.
 At least two of the emulators I've looked at have this incorrect implementation.
 And CowGod's influential CHIP-8 Technical Reference also has it wrong.
 
@@ -211,7 +238,49 @@ The correct interpretation of the shift instructions was clarified in a recent e
 at the [Yahoo VIP Group](https://groups.yahoo.com/neo/groups/rcacosmac/conversations/messages/328).
 
 
-## Program Design
+## Sources
+
+There are many CHIP-8 emulators to be found around the internet.
+It is a favorite project for people studying computer science.
+I have seen several of these, but in creating CHIP8IDE
+I have taken explanations, ideas, and some code from following:
+
+Hans Christian Egeberg wrote CHIPPER, a CHIP-8/SCHIP assembler with output to
+a binary file for execution in the HP48 calculator.
+It is still available from the [HP Calculator
+archives](http://www.hpcalc.org/details/6735). The C source of CHIPPER
+is completely uncommented, but the CHIPPER.DOC file included with it has a
+good review of the instructions.
+
+David Winter created a CHIP-8 emulator for MS-DOS. His [CHIP-8
+page](http://www.pong-story.com/chip8/) has the source of Egeberg's CHIPPER,
+and the source and/or executable of a number of CHIP-8 and SCHIP games.
+Although the
+source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents
+the instruction set. I have used the games from this page as test vehicles
+and have included a number of them in the distribution of CHIP8IDE.
+
+Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is
+an elegantly coded CHIP-8 emulator (ut it does SHR/SHL incorrectly).
+I took Python coding ideas from it.
+
+"Mudlord" (Brad Miller) wrote a
+[CHIP-8/SCHIP emulator in C++](https://github.com/mudlord/maxe)
+which I have consulted. (But it too has the SHR/SHL instructions wrong.)
+
+Jeffrey Bian wrote [MOCHI-8](http://mochi8.weebly.com/), a CHIP-8 assembler,
+disassembler, and emulator, all in Java. The assembler is notably advanced
+over CHIPPER, supporting forward references to labels and complex
+expressions. I have followed his assembly language syntax, and I referred to
+his code and documentation in creating the assembler and disassembler in this
+project. (But his emulator also has the SHL/SHR instructions wrong.)
+
+Github user "mir3z" has a [JavaScript CHIP-8 emulator](https://github.com/mir3z/chip8-emu)
+which I did not actually read.
+However, the [rom folder](https://github.com/mir3z/chip8-emu/tree/master/roms) at that site is stuffed with many
+S/CHIP-8 executables.
+
+## CHIP8IDE Design
 
 CHIP8IDE is written in Python for version 3.5. It uses Qt 5.7 and PyQt 5.7
 for user interface code. The code is written in "literate" style, with code interspersed
@@ -229,24 +298,41 @@ other module to initialize itself.
 
 The module memory.py displays the emulated machine state and gives the user
 control of the execution of the emulator.
+It uses a separate Qt thread to implement the free-running RUN state,
+so the emulator can run at speed while the user still interacts with 
+Qt widgets.
 
 The module display.py manages the emulated screen and keypad and sound. It
 exports functions to the emulator for drawing, key status, and sound.
 
-The module source.py manages the assembly source editor. It also contains a
-disassembler that is used to load CHIP-8 binaries into source form. It
-implements the File>Load and File>Save operations. It calls on the emulator
-to update the list of breakpoint addresses.
+The module source.py manages the assembly source editor.
+It implements the New, Open, Save and Save-As operations.
+It interacts with the emulator to manage the list of breakpoint addresses
+and to be notified when emulation stops, to center the PC statement.
 
-The memory, display and source modules make extensive use of PyQt classes and
-create PyQt windows and other objects. However, these modules do not offer
-their APIs through the class mechanism. For many programmers it would be
-almost a reflex to have each module define a class with methods to represent
-its capabilities. But this is quite unnecessary (and such "singleton
-factories" are accounted as bad O-O design).
+The source.py code calls on assembler1.py to perform syntax checking
+of the statements as they are entered. This code tokenizes each statement,
+detects errors, and stores value expressions in the form of Python code objects.
+
+When the CHECK or LOAD button is clicked, source.py calls on assembler2.py
+to perform the actual assembly. It uses the tokens and expression code left
+by assembler1.py to complete the assembly, in the process detecting various
+errors.
+
+The common API shared by source.py, assembler1.py and assembler2.py is the
+Statement class, defined in statement.py.
+A Statement object represents the tokenized statement and
+its status. One Statement object is stored as the userData value of each
+editor QTextBlock.
+
+To implement loading a non-ASCII file, source.py calls disassembler.py.
+This module performs the disassembly and returns a single string which can
+be loaded as the plain text of the editor widget. The disassembler cannot
+really fail because any byte it does not recognize as an S/CHIP-8 instruction,
+it represents as a `DB #xx` statement.
 
 In Python, an imported module is a private namespace. Each module uses the
-\_\_all\_\_ global variable to define the public names it exports to other
+`__all__` global variable to define the public names it exports to other
 modules. One module gets a service from another by importing it and calling
 an exported function. For example, the chip8 module gains access to the
 display with code such as,
@@ -263,38 +349,52 @@ results. TODO: is this being automatically checked?
 
 ### Unit tests
 
-Each module has a "if name is main" section that executes basic sanity tests
+Some modules have an "if name is main" section that executes basic sanity tests
 against the module code. I did not use pytest or nose or any other unit test
 framework. The unit tests are just hacked in.
 
-## Sources
+## >>>CURRENT STATUS<<<
 
-In creating CHIP8IDE I have taken explanations, ideas, and some code from
-following:
+* Emulator module substantially complete.
+* Memory module substantially complete (see below)
+* Editor mostly complete (see below)
+* Lexical scan and error display complete
+* Assembler substantially complete
+* Disassembler complete
+* Display shows the emulated screen
 
-Hans Christian Egeberg wrote CHIPPER, a CHIP-8/SCHIP assembler with output to
-a binary file for execution in the HP48 calculator in C, which is still
-available from the [HP Calculator
-archives](http://www.hpcalc.org/details/6735). The source of CHIPPER
-is completely uncommented, but the CHIPPER.DOC file included with it has a
-good review of the instructions.
+TODO: 
 
-David Winter created a CHIP-8 emulator for MS-DOS. His [CHIP-8
-page](http://www.pong-story.com/chip8/) has the source of Egeberg's CHIPPER,
-and the source and executable of a number of CHIP-8 and SCHIP games. Although the
-source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents
-the instruction set. I have used the games from this page as test vehicles
-and have included a number of them in the distribution of CHIP8IDE.
+All modules:
 
-Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is
-an elegantly coded CHIP-8 emulator. (But it does SHR/SHL incorrectly.)
+* add logging
+* complete type annotations and run checker
 
-"Mudlord" (Brad Miller) wrote a CHIP-8/SCHIP emulator in C++ (https://github.com/mudlord/maxe)
-which I have consulted. (But it too has the SHR/SHL instructions wrong.)
+Emulator:
+* Add registry for "stopped" callback
 
-Jeffrey Bian wrote [MOCHI-8](http://mochi8.weebly.com/), a CHIP-8 assembler,
-disassembler, and emulator, all in Java. The assembler is notably advanced
-over CHIPPER, supporting forward references to labels and complex
-expressions. I have followed his assembly language syntax, and I referred to
-his code and documentation in creating the assembler and disassembler in this
-project. (But his emulator also has the SHL/SHR instructions wrong.)
+Assembler:
+* Add assembled PC to Statement object
+* Add assembled value to Statement object
+
+Source:
+* treat tab as 4spaces not 8?
+* Add Find/Replace dialog, ^f ^g/^G ^t ^= 
+* Add ^E jump to next error
+* Add breakpoint toggling and display (ctl-click or ^b?)
+* Add clear-all-BP button
+* Clear all BP on Open, New
+* On open-binary set name Untitled, clear path
+* Jump cursor to PC statement on stop (registry)
+* Display assembled value, when known, in status line
+
+Display:
+
+*   Code and test keypad
+*   Design and test keypad/keyboard assignments
+*   Implement some display instructions (scroll, etc)
+*   Implement sound
+
+Memory:
+* scroll display to 0200 on reset
+* Highlight current inst. whenever stopped
