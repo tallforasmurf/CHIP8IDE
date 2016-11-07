@@ -390,7 +390,7 @@ Source:
 
 Display:
 
-*   Code and test keypad
+*   <strike>Code and test keypad</strike>
 *   Design and test keypad/keyboard assignments
 *   Implement remaining display instructions (scroll, etc)
 *   Implement sound
@@ -398,3 +398,5 @@ Display:
 Memory:
 * scroll display to 0200 on reset
 * Highlight current inst. whenever stopped
+* update both tables on any stop
+* execution not cleared on LOAD button?
