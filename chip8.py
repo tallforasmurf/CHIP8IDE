@@ -217,7 +217,7 @@ def reset_vm( memload : List[int] = None ) -> None :
     passes the current assembled program, or it could be a unit test.
     '''
     if memload is not None :
-        assert len( memload ) <= (4096-256)
+        assert len( memload ) <= (4096-0x0200)
         MEMORY[ 0x0200 : 0x01FF + len( memload ) ] = memload
 
     '''
@@ -525,7 +525,7 @@ def do_and( INST: int, PC: int ) -> int :
 
 '''
 8ts3 XOR vt, vs
-Historical note: XOR is not mentioned in Wiesbecker's BYTE article
+Historical note: XOR is not mentioned in Weisbecker's BYTE article
 or the VIP manual, but it existed and was quickly found by users who
 documented it in the VIPER fanzine.
 '''
@@ -549,7 +549,7 @@ def do_add( INST: int, PC: int ) -> int :
     return PC+2
 
 '''
-8ts5, SUB vt, vs (not-borrow to F) Why did Wiesbecker spec that vF is 1 if
+8ts5, SUB vt, vs (not-borrow to F) Why did Weisbecker spec that vF is 1 if
 there is NO borrow? Must have been something to do with the 1800 chip's
 arithmetic. It doesn't matter; the test for borrow would be "SKE vF,x"
 and it doesn't matter if x is 0 or 1.
@@ -868,9 +868,11 @@ Based on this, one may assume these instructions are not often used, or at least
 few if any programs actually depend on the I-reg being incremented.
 
 Also neither one checks for invalid address. In the COSMAC VIP, storing v0-v1
-at 4095 (for example) would have resulted in storing v1 at location 0000,
-clearly a bug. In emulated memory it would raise an index error (in Python)
-or store outside the allocation (in CPP).
+at 4095 (for example) would have either resulted in storing v1 at location
+0000 (if memory wrapped around) or attempting to store it in a nonexistent
+address or in ROM, probably ignored by the hardware. Either is clearly a bug.
+In emulated memory it would raise an index error (in Python) or store outside
+the allocation (in CPP).
 
 '''
 def do_store_regs( INST: int, PC: int ) -> int :
@@ -991,7 +993,7 @@ dispatch_Fxxx = {
     0xF015 : do_load_timer, # LD DT, vx
     0xF018 : do_set_tone,   # LD ST, vx
     0xF01E : do_add_to_I,   # ADD I, vx
-    0xF029 : do_load_chip8_sprite, # LD I, vx
+    0xF029 : do_load_chip8_sprite, # LDC I, vx
     0xF030 : do_load_schip_sprite, # LDH I, vx
     0xF033 : do_store_decimal, # STBCD vx
     0xF055 : do_store_regs, # STM v0, vx
