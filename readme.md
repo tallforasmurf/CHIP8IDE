@@ -67,7 +67,7 @@ mistakes that are not evident to lexical parsing.
 When a statement is in error, it is shown with a pink background.
 When the edit cursor is on an erroneous statement, the cause of the error
 is displayed in a status line below the edit window.
-The user can jump from quickly from error line to error line by keying control-E.
+The user can jump quickly from error line to error line by keying control-E.
 
 The Source window offers a LOAD button which causes the program to be
 assembled and, if the source is error-free,
@@ -128,7 +128,7 @@ documents and a selection of game programs written for the S/CHIP-8.
 
 * *An Easy Programming System* by Joseph Weisbecker is an article that
   appeared in BYTE magazine in 1978. Weisbecker, while employed at RCA,
-  designed the CHIP-8 language and interpreter for the COSMAC VIP
+  designed the CHIP-8 language and emulator for the COSMAC VIP
   single-board computer (which he also designed). This article describes
   the CHIP-8 design and contains a complete game program for the system.
 
@@ -161,14 +161,14 @@ machine language of the 1802 chip; in particular it supported graphics
 through sprites, primitive sound output, and input from the 16-key pad.
 Weisbecker coded the entire emulator in 512 bytes of machine code.
 (This is why all CHIP-8 programs load at 0x0200: the emulator itself 
-occupied bytes 0000-0200.)
+occupied bytes 0000-01FF.)
 
 Even though there was no assembler -- so the user had to enter code
 directly into memory in hexadecimal -- games
 like Pong and Breakout could be coded and played enjoyably.
 After a program had been entered and debugged, the user could save
 memory to an audio cassette for reloading later.
-Programs were widely shared on audio cassette in the hobbyist community,
+Programs were shared on audio cassette in the hobbyist community,
 and via the user magazine, *VIPER*.
 
 Later, the SCHIP-48 virtual machine was defined to provide an easy way
@@ -261,7 +261,7 @@ the instruction set. I have used the games from this page as test vehicles
 and have included a number of them in the distribution of CHIP8IDE.
 
 Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is
-an elegantly coded CHIP-8 emulator (ut it does SHR/SHL incorrectly).
+an elegantly coded CHIP-8 emulator (but it does SHR/SHL incorrectly).
 I took Python coding ideas from it.
 
 "Mudlord" (Brad Miller) wrote a
@@ -345,13 +345,13 @@ The specific list of exported names is documented in each module.
 ### Type checking
 
 All modules use Python type annotation to document function arguments and
-results. TODO: is this being automatically checked?
+results. It might even be automatically checked...
 
 ### Unit tests
 
 Some modules have an "if name is main" section that executes basic sanity tests
 against the module code. I did not use pytest or nose or any other unit test
-framework. The unit tests are just hacked in.
+framework. The unit tests are just hacked in. So sue me.
 
 ## >>>CURRENT STATUS<<<
 
@@ -392,7 +392,7 @@ Display:
 
 *   Code and test keypad
 *   Design and test keypad/keyboard assignments
-*   Implement some display instructions (scroll, etc)
+*   Implement remaining display instructions (scroll, etc)
 *   Implement sound
 
 Memory:
