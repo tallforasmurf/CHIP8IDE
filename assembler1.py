@@ -26,29 +26,37 @@ __email__ = "davecortesi@gmail.com"
 
     CHIP-8 IDE ASSEMBLY PHASE ONE
 
-This is a sub-module of the source.py module, which implements the
-source editor window.
+This is a sub-module of the source.py module, which implements the source
+editor window.
 
-The code here implements the initial assembly syntax check, which
-is called from the QSyntaxHighlighter attached to the edit document.
-Each time a line is edited and the cursor moves away from that line,
-the Syntax Highlighter is called, and it uses the phase_one()
-function of this module to render that source line into a Statement
-object, which is stored in the UserData field of the QTextBlock.
+The code here implements the initial assembly syntax check, which is called
+from the QSyntaxHighlighter attached to the edit document. Each time a line
+is modified the Syntax Highlighter is called. It calls phase_one() in this
+module to render that source line into a Statement object, which is stored in
+the UserData field of the QTextBlock.
 
+A number of errors are caught here and reported as two fields of the
+Statement object. The user is notified by the editor when a statement is
+invalid.
 
+When the statement text is valid, the resulting Statement object has the info
+needed to complete the assembly later, in the assemble() function of the
+assemble2 module.
 
 '''
 
 '''
 Define exported names.
 
-This module exports two names, phase_one (function) and Statement (class).
+This module exports just the phase_one function.
 All other defined names are internal to the module.
 '''
-__all__ = [
-'phase_one', 'Statement'
-]
+__all__ = [ 'phase_one' ]
+
+'''
+Import the Statement class
+'''
+from statement_class import Statement
 
 '''
 Import the register code numbers from the emulator.
@@ -60,82 +68,82 @@ from chip8 import R as RCODES
 
     Tokenization by Regular Expression
 
-Refer to https://docs.python.org/dev/library/re.html#writing-a-tokenizer
-for some insight into what's going on here.
-
-Using the pypi module regex which is faster and has more features than the
-standard re.
+Refer to https://docs.python.org/dev/library/re.html#writing-a-tokenizer for
+some insight into what's going on here. TL;DR: we set up a list of named
+regular expressions to recognize all valid token forms that can occur.
 
 Note the regexen are processed with the ignore-case flag, so capitalization
 doesn't matter.
 
+We use the pypi module regex which is faster and has more features than the
+standard re. (Although no special regex features are used, so the standard
+re module would work. Just not quite as fast. And we need to be fast, because
+the regexes get exercised for EVERY FUCKING KEYSTROKE in the editor. Really.)
+
+The regex for each specific directive or opcode needs to be fenced with
+the \b word-break test. Otherwise we tend to recognize opcodes at the start
+or end of innocent labels.
 '''
 
 import regex
 
 '''
-
 List of Directive opcodes. A search for these is the first item in the
 tokenizer regex. It is important that they be first so that the ORG directive
 is recognized ahead of the search for the OR opcode.
-
 '''
 
 directives = [
-    'DA',
-    'DB',
-    'DW',
-    'DS',
-    'EQU',
-    '=',
-    'ORG',
+    r'\bDA\b',
+    r'\bDB\b',
+    r'\bDW\b',
+    r'\bDS\b',
+    r'\bEQU\b',
+    r'=',
+    r'\bORG\b',
     ]
 
 '''
-
 List of instruction opcodes. The search for the names in this list is the
 second item in the tokenizer regex. The more specific names must come ahead
 of the more general, e.g. LDC must precede LD, SUBN must precede SUB.
-
 '''
 
 opcodes = [
-    'ADD',
-    'AND',
-    'CALL',
-    'CLS',
-    'DRAW',
-    'EXIT',
-    'HIGH',
-    'JP',
-    'LDC',
-    'LDH',
-    'LDM',
-    'LD',
-    'LOW',
-    'OR',
-    'RET',
-    'RND',
-    'SCD',
-    'SCL',
-    'SCR',
-    'SE',
-    'SHL',
-    'SHR',
-    'SKP',
-    'SKNP',
-    'SNE',
-    'STD',
-    'STM',
-    'SUBN',
-    'SUB',
-    'XOR'
+    r'\bADD\b',
+    r'\bAND\b',
+    r'\bCALL\b',
+    r'\bCLS\b',
+    r'\bDRAW\b',
+    r'\bEXIT\b',
+    r'\bHIGH\b',
+    r'\bJP\b',
+    r'\bLDC\b',
+    r'\bLDH\b',
+    r'\bLDM\b',
+    r'\bLD\b',
+    r'\bLOW\b',
+    r'\bOR\b',
+    r'\bRET\b',
+    r'\bRND\b',
+    r'\bSCD\b',
+    r'\bSCL\b',
+    r'\bSCR\b',
+    r'\bSE\b',
+    r'\bSHL\b',
+    r'\bSHR\b',
+    r'\bSKP\b',
+    r'\bSKNP\b',
+    r'\bSNE\b',
+    r'\bSTD\b',
+    r'\bSTM\b',
+    r'\bSUBN\b',
+    r'\bSUB\b',
+    r'\bXOR\b'
     ]
 
 '''
-
 List of V-reg names. The search for these is third in the tokenizer.
-
 '''
 
 v_regs = [ 'v'+c for c in '0123456789ABCDEF' ]
@@ -144,27 +152,27 @@ v_regs = [ 'v'+c for c in '0123456789ABCDEF' ]
 
 Define and name the legal tokens as (token-class-name, regex-to-match-it).
 
-Note they must be from explicit to general, i.e. look for specific opcodes
+They must be listed from explicit to general, i.e. look for specific opcodes
 before the more general WORD token.
 
-Note re the STRING token. It requires use of 'single' quotes; it will not
-recognize double-quotes. It does recognize a null string (which will be
-assembled as DS 0). The assembler doc says that to include a single quote,
-double it: 'MA''AM'. In tokenizing this just resolves to two string tokens,
+Notes re the STRING token. It only recognizes the use of 'single' quotes; it
+will not recognize double-quotes. It does recognize a null string (which will
+be assembled as DS 0). The assembler doc says that to include a single quote,
+double it: 'MA''AM'. In tokenizing, that just resolves to two string tokens,
 STRING(MA) and STRING(AM). While processing tokens we note this and glue them
 back together.
 '''
 
 token_specs = [
+    ( 'LABEL',     r'^\s*[A-Z0-9_]+\s*\:'        ), # Word: anchored to ^ is a label
     ( 'WHITE',     '\s+'                  ), # ignored whitespace
     ( 'DIRECTIVE', '|'.join( directives ) ), # directives
     ( 'OPCODE',    '|'.join( opcodes )    ), # known opcodes
     ( 'VREG',      '|'.join( v_regs )     ), # v regs
-    ( 'IREG',      'I'                    ), # treat special regs specially
-    ( 'KREG',      'K'                    ),
-    ( 'DTREG',     'DT'                   ),
-    ( 'DSREG',     'ST'                   ),
-    ( 'COLON',     r':'                   ), # NAME COLON is a label
+    ( 'IREG',      r'\bI\b'               ), # treat special regs specially
+    ( 'KREG',      r'\bK\b'               ),
+    ( 'DTREG',     r'\bDT\b'              ),
+    ( 'DSREG',     r'\bST\b'              ),
     ( 'COMMA',     r','                   ), # comma delimits operands
     ( 'DECIMAL',   r'[0-9]+'              ), # decimal has no prefix
     ( 'HEX',       r'#[0-9A-F]+'          ), # hex
@@ -209,15 +217,18 @@ class Token() :
 
     Regexes for statement recognition
 
-While processing the tokens in sequence, we build up a synopsis, or
-signature, of the statement composed of one or a few characters per token.
-Labels and comments are not reflected in the signature. OPCODE and DIRECTIVE
-tokens go in as themselves ('LD', 'ORG').
+After tokenizing using the above, we process the tokens in sequence, and
+build up a synopsis, or signature, of the statement composed of one or a few
+characters per token. There are a limited number of signatures possible, and
+any statement whose signature is not one of them, is automatically invalid.
 
-The following table relates token-types (from above) to their summary
-letters. Any token that could be part of an expression is represented as 'V'.
-(The actual validity of an expression is determined in a separate step.)
-Thus the signature for "ld v5,31" is LDR,V.
+Labels and comments are not reflected in the signature. OPCODE and DIRECTIVE
+tokens go in as themselves ('LD', 'ORG'). Other tokens are converted to the
+single letters in the following table. Any token that could be part of an
+expression is represented as 'V'. (The actual validity of an expression is
+determined in a separate step.)
+
+Thus the signature for "ld v5,31" is "LDR,V".
 
 '''
 
@@ -251,7 +262,6 @@ signature_dict = {
     'CLS'    : 'CLS',
     'EXIT'   : 'EXIT',
     'HIGH'   : 'HIGH',
-    'JPR'    : 'JPX',
     'LDCI,R' : 'LDC',
     'LDHI,R' : 'LDH',
     'LDR,K'  : 'LDK',
@@ -265,7 +275,6 @@ signature_dict = {
     'RET'    : 'RET',
     'SCL'    : 'SCL',
     'SCR'    : 'SCR',
-    'SCD'    : 'SCD',
     'SER,R'  : 'SER',
     'SHRR,R' : 'SHR',
     'SHLR,R' : 'SHL',
@@ -283,8 +292,8 @@ signature_dict = {
 The remaining possible signatures have varying parts, mostly expression
 tokens. We use regexes to recognize these.
 
-Similar to the token regex above, this regex recognizes only valid
-signatures. The name of a match is a code for that instruction format.
+Constructed similarly to the token regex above, this regex recognizes only
+valid signatures. The name of a match is a code for that instruction format.
 
 The regex is applied with re.fullmatch() so these expressions are
 implicitly '^..$'.
@@ -301,6 +310,7 @@ signatures = [
     ( 'DW',    'DWV+(,V+)*' ),
     ( 'EQU',   'EQUV+'  ),
     ( 'JPADR', 'JPV+'   ),
+    ( 'JPXADR','JPR,V+' ),
     ( 'LDI',   'LDI,V+' ),
     ( 'LDRB',  'LDR,V+' ),
     ( 'ORG',   'ORGV+'  ),
@@ -315,90 +325,16 @@ signature_expression = '|'.join(
     )
 signature_regex = regex.compile( signature_expression )
 
-'''
-    Statement class
-
-Each statement in the source file has one object of this class associated
-with it. It is stored as the userData() of the QTextBlock for that line.
-
-A new instance is created on every call to phase_one(). The Statement object
-contains everything needed to complete the assembly of that statement.
-
-    TODO: apply __slots__ when design complete
 
 '''
-class Statement():
-    def __init__( self, valid=False ) :
-        '''
-        Is this statement recognized as valid? If not, line is pink.
-        '''
-        self.is_valid = valid
-        '''
-        If the statement is invalid, error_pos is set to the column where it
-        went wrong, if we know it; or to zero. An error message is supplied
-        as well.
-        '''
-        self.error_pos = None
-        self.error_msg = ''
-        '''
-        If the statement is recognized by signature_dict or signature_regex,
-        this is the instruction code found. If the statement was not
-        recognized, self.form is a null string and self.is_valid is False.
-        '''
-        self.form = ''
-        '''
-        Does this statement define a name? It does if there is a label at the
-        head of this line, or if the statement is an EQU.
-        '''
-        self.defined_name = ''
-        '''
-        What is the value of the defined_name? If it is a line label, the
-        following is None and the value is the PC at this point. For an
-        EQUate, this will be the value of the evaluated expression after
-        assembly, and 0 as a placeholder during editing.
-        '''
-        self.defined_value = None
-        '''
-        What should the PC be after this statement? It could be unchanged (a
-        comment or an error line), incremented by 2 (the typical instruction)
-        incremented by 1 or more (DS, DB, DA), or set to a completely new
-        value (ORG).
-
-        If the first item of this tuple is False, it is the latter case, ORG;
-        set the PC to the second value. When True, merely add the second
-        value to the current PC.
-        '''
-        self.next_pc = (True, 0)
-        '''
-        The number of generated bytes can always be known when the line is
-        entered, but the actual bytes cannot be known until assembly
-        time (for some types of statement). After the value is known it is
-        stored here.
-        '''
-        self.value = [] # list of bytes generated
-        '''
-        When any operand is a register, its index (as defined in the chip8.R
-        enumeration) is in one of these fields.
-        '''
-        self.reg_1 = None # reg named in first operand if any
-        self.reg_2 = None # reg named in second operand if any
-        '''
-        Only two instructions can have more than one expression (DB, DW).
-        The rest have at most one. In any case, all expressions are stored
-        here as a list of Python code objects, one per expression.
-        '''
-        self.expressions = [] # list of tokens? an AST?
-
-'''
-
     Assembly-time Symbol Table
 
 Expressions are translated into Python expressions. Each WORD token is
 translated into a call on LOOKUP(word).
 
-That name is resolved as a global at the time the eval() function is
+The name LOOKUP is resolved as a global at the time the eval() function is
 applied. When that is done in the namespace of this module, LOOKUP()
-is the following which just returns a zero.
+is the following, which just returns a zero.
 
 During the real assembly (in the assembler2 module), LOOKUP is defined
 to return the value of a name, or None if the name is not defined.
@@ -406,16 +342,12 @@ to return the value of a name, or None if the name is not defined.
 '''
 
 def LOOKUP( name:str ) -> int :
-    return 0
+    return 1
 
 '''
     Parsing Phase 1: Recognition
 
-This phase of parsing is called from the QSyntaxHighligher. Qt, when a
-statement has been edited and the edit cursor moves away from it, hands the
-statement to the highlighter. The highlighter passes the statement text to
-this function which examines it and returns a Statement object with the
-is_valid flag set True or False.
+This phase of parsing is called from the QSyntaxHighligher.
 
 For this application we do not need to parse a general-purpose language, but
 only recognize a relatively small set of valid statement forms. The only
@@ -424,7 +356,7 @@ CHIPPER assembler and Jeffrey Bian's MOCHI-8 assembler support general
 expressions, so presumably there are CHIP-8 source programs around that use
 them. Probably 99% of all expressions are:
 
-* a single literal value, #02f or $10001000
+* a single literal value like #02f or $10001000
 * a single name like DO_SUB
 * two values with one operator between,like NAME & #0f.
 
@@ -434,17 +366,18 @@ Nevertheless we need to handle ones like (to concoct a ridiculous example),
 
 I considered taking this as an opportunity to write my own parser for
 expressions -- but no. There are only cosmetic differences between CHIPPER
-literals and Python ones (#073 vs. 0x073, $10001000 vs. b'10001000') and once
-those are fixed, we can use Python's perfectly good parser on them.
+literals and Python ones (#073 vs. 0x073, $10001000 vs. b'10001000', shift
+and exponent operators) and once those are fixed, we can use Python's
+perfectly good parser on them.
 
 So, phase 1 of parsing proceeds in these steps:
 
-    * Create a Statement object S with is_valid=False and next_pc=(True,0).
+    * Initialize the Statement object for parsing.
 
     * Tokenize the statement with the t_rex regex, producing a list
       of tokens.
 
-    * Strip off a label (WORD COLON or WORD EQU), noting the label in S.defined_name
+    * Strip off a label (LABEL token or WORD EQU), noting the label in S.defined_name
 
     * Strip off a COMMENT token, which will be the last if it exists.
 
@@ -453,7 +386,7 @@ So, phase 1 of parsing proceeds in these steps:
 
     * Scan the remaining list of tokens to do two things:
 
-      - Build a signature of the statement (see summary_characters above).
+      - Build a signature of the statement.
 
       - Save the tokens of expression operands as lists of tokens.
 
@@ -478,13 +411,13 @@ S.error_pos. It is up to the caller to convey this info to the user.
 
 '''
 
-def phase_one( statement_text: str ) -> Statement :
+def phase_one( statement_text: str, S : Statement ) :
     global LOOKUP
 
     '''
-    Make a Statement initialized to not-valid and length zero.
+    Clear the Statement fields we will set here.
     '''
-    S = Statement()
+    S.init_static()
     '''
     Tokenize the text to get a list of tokens.
     '''
@@ -503,6 +436,7 @@ def phase_one( statement_text: str ) -> Statement :
         catch-all GARBAGE token. Just mark the statement bad and quit
         '''
         if match.lastgroup == 'GARBAGE' :
+            S.text_error = True
             S.error_pos = match.start( match.lastgroup )
             S.error_msg = 'Cannot parse statement'
             break
@@ -530,21 +464,20 @@ def phase_one( statement_text: str ) -> Statement :
     '''
     If the tokens were not all recognized, quit now
     '''
-    if S.error_pos is not None :
-        return S
+    if S.text_error :
+        return
 
     '''
     If the statement defines a label, note that and strip it.
     '''
-    if len(tokens) >= 2 \
-       and tokens[0].t_type == 'WORD' \
-       and tokens[1].t_type == 'COLON' :
+    if len(tokens) and tokens[0].t_type == 'LABEL' :
             '''
-            Normal label: Store the name and leave S.defined_value at None.
-            Strip the two tokens.
+            Normal label: Store the name (minus the colon that is included in
+            the match) and leave S.defined_value at None. Then discard the
+            label token.
             '''
-            S.defined_name = tokens[0].t_value
-            tokens = tokens[2:]
+            S.defined_name = tokens[0].t_value[:-1]
+            tokens = tokens[1:]
     elif len(tokens) >= 3 \
          and tokens[0].t_type == 'WORD' \
          and tokens[1].t_type == 'DIRECTIVE' \
@@ -562,8 +495,7 @@ def phase_one( statement_text: str ) -> Statement :
     If the whole line was just a label and/or a comment, we are done.
     '''
     if 0 == len( tokens ) :
-        S.is_valid = True
-        return S
+        return
 
     '''
     Build the signature while storing register indices and expression
@@ -591,10 +523,11 @@ def phase_one( statement_text: str ) -> Statement :
             signature.append( token.t_value.upper() ) # LD or ORG or DRAW
             continue
         '''
-        Fetch the summary char for this token type. The only failure
-        should be a misplaced COLON.
+        Fetch the summary char for this token type. The only token type
+        not in summary_chars is GARBAGE.
         '''
         if not token.t_type in summary_chars :
+            S.text_error = True
             S.error_pos = token.t_start
             S.error_msg = 'Invalid token'
             break # out of the loop
@@ -631,6 +564,7 @@ def phase_one( statement_text: str ) -> Statement :
             elif S.reg_2 is None :
                 S.reg_2 = code
             else :
+                S.text_error = True
                 S.error_pos = token.t_start
                 S.error_msg = 'Invalid register operand'
                 break
@@ -655,8 +589,8 @@ def phase_one( statement_text: str ) -> Statement :
     If any errors were found in that loop, quit now.
     Otherwise, save the (last or only) expression if any.
     '''
-    if S.error_pos : # is not None,
-        return S
+    if S.text_error :
+        return
     if expression :
         S.expressions.append( expression )
     '''
@@ -671,6 +605,10 @@ def phase_one( statement_text: str ) -> Statement :
         m = signature_regex.fullmatch( signature )
         if m : # is not None,
             instruction_form = m.lastgroup
+            if instruction_form == 'JPXADR' and S.reg_1 != 0 :
+                S.text_error = True
+                S.error_pos = 0
+                S.error_msg = 'Must use V0'
         else :
             '''
             The statement was composed of recognizable tokens but in some
@@ -678,15 +616,20 @@ def phase_one( statement_text: str ) -> Statement :
             case we know the statement is wrong, so return S now, but
             we do not know where the position of the error is.
             '''
+            S.text_error = True
             S.error_pos = 0
-            S.error_msg = 'Confused statement'
+            S.error_msg = 'Statement does not make sense'
 
     '''
-    If no errors yet, store the instruction format code in S.form for use
+    Any errors in the signature check? If so, quit.
+    '''
+    if S.text_error :
+        return
+
+    '''
+    We know the instruction form code; store it in S.form for use
     during the assembly.
     '''
-    if S.error_pos is not None :
-        return S
     S.form = instruction_form
 
     '''
@@ -698,9 +641,14 @@ def phase_one( statement_text: str ) -> Statement :
     expression text. Use the built-in compile() function to parse and convert
     that to a code-object that can be evaluated later.
 
-    Literals need only a cosmetic brush-up. Names are converted into calls on
-    the LOOKUP() function. The one in this module returns 0 for any name, so
-    a compiled expression can be evaluated at this time.
+    Literals need only a cosmetic brush-up, except for string literals, which
+    are uppercased and converted to a call on bytes(,encoding=ASCII) which
+    could fail at assembly time, causing a diagnostic.
+
+    Names are converted into calls on the LOOKUP() function. The one in this
+    module returns 1 for any name, so a compiled expression can be evaluated
+    at this time. (Returns 1 so that in case the user wrote "NAME1/NAME2" we
+    do not cause a divide-by-zero.)
     '''
 
     code_list = []
@@ -718,14 +666,16 @@ def phase_one( statement_text: str ) -> Statement :
                 # #0f -> 0x0f
                 python_expression.append( '0x0' + token.t_value[1:] )
             elif token.t_type == 'BINARY' :
-                # $1000 -> b'1000'
-                python_expression.append( "b'" + token.t_value[1:] + "'" )
+                # $...1..1 -> $0001001
+                token.t_value = token.t_value.replace('.','0')
+                # $0001001 -> b'0001001'
+                python_expression.append( "0b" + token.t_value[1:] )
             elif token.t_type == 'OCTAL' :
                 # @377 -> 0o377
                 python_expression.append( '0o0' + token.t_value[1:] )
             elif token.t_type == 'STRING' :
-                # MA'AM -> "MA'AM"
-                python_expression.append( '"' + token.t_value[1:-1] + '"' )
+                # 'ma'am' -> bytes("MA'AM",encoding="ASCII")
+                python_expression.append( 'bytes("' + token.t_value[1:-1].upper() + '", encoding="ASCII")' )
             elif token.t_type == 'WORD' :
                 # LABEL -> LOOKUP("LABEL")
                 python_expression.append( 'LOOKUP("' + token.t_value + '")' )
@@ -744,7 +694,8 @@ def phase_one( statement_text: str ) -> Statement :
                     # > -> >>
                     python_expression.append( '>>' )
                 else:
-                    assert False
+                    assert False # no other tokens could get this far
+
         python_expression = ' '.join( python_expression )
 
         try :
@@ -752,23 +703,23 @@ def phase_one( statement_text: str ) -> Statement :
             code_obj = compile( python_expression, 'chip8ide assembler', 'eval' )
             code_list.append( code_obj )
         except Exception as E :
+            '''
+            compile() threw an exception, note the error and exit the loop.
+            '''
+            S.text_error = True
             S.error_msg = 'Invalid expression'
             S.error_pos = token_list[0].t_start
-        if code_obj is None :
-            '''
-            compile() threw an exception, exit the loop and quit
-            '''
             break
 
     '''
     Errors? Quit. Else save code objects in S. Copy the list
-    so we don't leave S pointing here.
+    so we don't leave S pointing to our local.
     '''
-    if S.error_pos is not None:
-        return S
+    if S.text_error :
+        return
 
     S.expressions = list( code_list )
-
+    #S.python_text = python_expression # DBG Save last/only expression text
     '''
     If the statement got through all that unscathed it is good -- assuming
     any names it refers to are eventually defined! Now try to figure out how
@@ -777,40 +728,33 @@ def phase_one( statement_text: str ) -> Statement :
 
     The vast majority of statements assemble to 2 bytes, so assume that.
     '''
-    S.next_pc = (True, 2)
-    if S.form == 'ORG' :
-        S.next_pc = (False, 0)
+    S.next_pc = 2
+    if S.form == 'ORG' or S.form == 'DS' :
+        '''
+        ORG and DS are very similar in that they just move the PC. ORG assigns
+        to the PC while DS increments it, but we can't know the numeric value
+        of either one until the expression is evaluated during assembly.
+        '''
+        S.next_pc = None
     elif S.form == 'DB' :
         '''
-        DB generates one byte per expression. We don't test the expressions
-        until assembly time.
+        DB generates one byte per expression.
         '''
-        S.next_pc = ( True, len( S.expressions ) )
+        S.next_pc = len( S.expressions )
     elif S.form == 'DW' :
         '''
-        DW generates two bytes per expression. Again, we only find out if
-        one of them is, say, a string, later.
+        DW generates two bytes per expression.
         '''
-        S.next_pc = ( True, 2 * len( S.expressions ) )
-    elif S.form == 'DS' :
+        S.next_pc = 2 * len( S.expressions )
+    elif S.form == 'EQU' :
         '''
-        DS generates no bytes but moves the PC forward (actually we generate
-        zero-bytes). We know there is only one expression and it is not a string
-        (the signature test DSV+ assures that). We have validated the expression
-        syntax already. However, it could be negative?
+        EQU generates nothing
         '''
-        try:
-            x = eval( S.expressions[0], globals() )
-            if int(x) < 0 : raise ValueError
-            S.next_pc = (True, int(x) )
-        except Exception as E:
-            S.error_msg = 'DS value must be >= zero'
-            S.error_pos = 0
+        S.next_pc = 0
     '''
     And that's parsing phase 1
     '''
-    S.is_valid = S.error_pos is None
-    return S
+    return
 
 
 '''
@@ -827,19 +771,19 @@ if __name__ == '__main__' :
     #the_app = QApplication( args )
 
     def print_S( stmt, S:Statement ) :
-        if S.is_valid :
-            print(
-                '{} -> form:{} label:{} len:{}'.format(
-                    stmt, S.form, S.defined_name, S.next_pc[1] )
-                )
-        else:
+        if S.text_error :
             print(
                 '{}: {} at {}'.format(
                     stmt, S.error_msg, S.error_pos )
                 )
+        else:
+            print(
+                '{} -> form:{} label:{} len:{}'.format(
+                    stmt, S.form, S.defined_name, S.next_pc )
+                )
 
     good_statements = [
-        ' SCD ',
+        ' SCD 1+1',
         ' CLS ; cls',
         ' LOW ; low',
         ' HIGH ; get high',
@@ -893,6 +837,7 @@ if __name__ == '__main__' :
         ' DW 0',
         ' DW 1,@02, #03, $010',
         ' DB 1,2,$0011,#004',
+        ' DB $..1..1..',
         " da  'ma''am' ",
         " da  'string' ",
         " da '' ",
@@ -906,14 +851,19 @@ if __name__ == '__main__' :
         'ld v0,v1,v2',
         'rnd v1,v2',
         'ld v0,2+',
-        "ds -5"
+        "ds -5",
+        'jp v2,far'
         ]
-    for stmt in directs : #good_statements :
-        S = phase_one( stmt )
-        print_S( stmt, S )
-    for stmt in good_statements :
-        S = phase_one( stmt )
-        print_S( stmt, S )
-    for stmt in bad_statements :
-        S = phase_one( stmt )
-        print_S( stmt, S )
+    S = Statement()
+
+    #for stmt in directs : #good_statements :
+        #phase_one( stmt, S )
+        #print_S( stmt, S )
+    #for stmt in good_statements :
+        #phase_one( stmt, S )
+        #print_S( stmt, S )
+    #for stmt in bad_statements :
+        #phase_one( stmt, S )
+        #print_S( stmt, S )
+    phase_one( '  ADD V1, VA', S )
+    print_S( '  ADD V1, VA', S )
