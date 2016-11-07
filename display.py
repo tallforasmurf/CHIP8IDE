@@ -33,16 +33,14 @@ window and its contents as Qt objects. It sets its geometry from the saved
 settings. After creation, the window objects respond to Qt events from user
 actions.
 
-The window is an independent (that is parent-less) window with the title
+The window is an independent (that is, parent-less) window with the title
 "CHIP-8 I/O". It can be positioned, minimized or maximized independent of the
 rest of the app. Within the window are the following widgets:
 
-The display, represented as a QLabel containing a QPixmap. It presents the
+* The display, represented as a QLabel containing a QPixmap. It presents the
 CHIP8 (32x64) or SCHIP (64x128) display as an array of square pixels.
 
-The keypad, represented as a grid of specialized QPushbuttons.
-
-A QCheckbox that shows the current mode of the display.
+* The keypad, represented as a grid of specialized QPushbuttons.
 
 This window also implements the CHIP-8 sound output, emitting a continuous
 tone while the sound register is nonzero.
@@ -77,9 +75,8 @@ __all__ = [
     'scroll_left',
     'scroll_right',
     'key_test',
-    'sound',
-    'add_file_menu_action'
-    ]
+    'sound'
+]
 
 from typing import List, Tuple
 
@@ -105,11 +102,13 @@ from PyQt5.QtGui import (
 
 from PyQt5.QtWidgets import (
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
+    QToolButton,
     QWidget
     )
 
@@ -340,6 +339,78 @@ class Screen( QLabel ) :
 
 '''
 
+Define one keypad button. It is instantiated with its numeric code 0-16.
+From the code it derives is letter 0-F.
+
+It sets its size policy so it will expand to fill all available space
+in its layout.
+
+'''
+
+class KeyPadButton( QToolButton ) :
+    def __init__( self, code:int, parent = None ) :
+        super().__init__( parent )
+        self.code = code
+        self.letter = '{:1X}'.format( code )
+        self.setText( self.letter )
+        spolicy = QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
+        spolicy.setHorizontalStretch( 1 )
+        spolicy.setVerticalStretch( 1 )
+        self.setSizePolicy( spolicy )
+
+'''
+
+Define the keypad as a 4x4 grid of KeyPadButtons. Capture the "pressed"
+and "release" signals of each button and use them to keep track of which button is currently down,
+or None if none of them are.
+
+'''
+
+class KeyPad( QWidget ) :
+    def __init__(self, parent=None) :
+        super().__init__( parent )
+        self.pressed_button = -1
+        grid = QGridLayout( )
+        self.setLayout( grid )
+        min_size = 32
+        for n in range( 4 ) :
+            grid.setColumnMinimumWidth( n, min_size )
+            grid.setRowMinimumHeight( n, min_size )
+        for code in range(16) :
+            kp_button = KeyPadButton( code )
+            grid.addWidget(
+                kp_button,
+                code // 4,
+                code % 4 )
+            kp_button.pressed.connect( self.button_down )
+            kp_button.released.connect( self.button_up )
+
+    def button_down( self ) :
+        '''
+        This slot receives the pressed signal from any of the 16 buttons.
+        Note which one, so when the emulator queries the keypad we can reply.
+
+        This uses the QObject.sender() method to return a reference to the
+        object (which we are sure is a KeyPadButton) that initiated the
+        signal.
+        '''
+        that_button = self.sender()
+        self.pressed_button = that_button.code
+
+    def button_up( self ) :
+        '''
+        This slot receives the released signal from any of the 16 buttons.
+        We don't care which one is released. We just set -1 in our
+        pressed_button variable.
+        '''
+        self.pressed_button = -1
+
+
+
+
+
+'''
+
 Define the main window in which our stuff is displayed.
 When instantiated, it instatiates everything else.
 
@@ -353,22 +424,22 @@ class MasterWindow( QWidget ) :
         self.settings = settings
 
         '''
-        Set our layout to an hbox.
+        Set our layout to a vbox.
         '''
-        hbox = QHBoxLayout()
-        self.setLayout( hbox )
+        vbox = QVBoxLayout()
+        self.setLayout( vbox )
         '''
         Instantiate the screen. It is on the left.
-        Add a bit of stretch.
         '''
         self.screen = Screen()
-        hbox.addWidget( self.screen, 10  , Qt.AlignTop)#Qt.AlignLeft |
-        hbox.addStretch(5)
+        vbox.addWidget( self.screen, 10 )#, Qt.AlignTop | Qt.AlignLeft
 
-        ##debuggery
-        #self.dbg = QPushButton('meh')
-        #hbox.addWidget( self.dbg )
-        #self.dbg.clicked.connect( self.dodbg )
+        '''
+        Instantiate the keypad on the right.
+        '''
+        self.keypad = KeyPad()
+        vbox.addWidget( self.keypad, 9 )#, Qt.AlignTop | Qt.AlignRight
+
         '''
         Set the window title
         '''
@@ -402,7 +473,7 @@ SCREEN = None # type: Screen
 KEYPAD = None # type: Keypad
 
 def initialize( settings: QSettings ) -> None :
-    global OUR_WINDOW, SCREEN
+    global OUR_WINDOW, SCREEN, KEYPAD
     '''
     Create the window and everything in it.
     Pass the settings object for its use.
@@ -412,7 +483,7 @@ def initialize( settings: QSettings ) -> None :
     Set up for quick access to screen and keypad
     '''
     SCREEN = OUR_WINDOW.screen
-    # KEYPAD = OUR_WINDOW.keypad
+    KEYPAD = OUR_WINDOW.keypad
     '''
     Display our window
     '''
@@ -466,10 +537,6 @@ The given coordinates need to be wrapped at the screen boundaries.
 from PyQt5.QtTest import QTest
 
 def draw_sprite( x: int, y:int, sprite_bytes: List[int] ) -> bool :
-    '''
-    To reduce the special-casing, convert an SCHIP 16x16 sprite from
-    a list of 32, 8-bit ints, to a list of 16, 16-bit ints.
-    '''
     pixel_list = []
     '''
     Set bit masks for x and y based on the screen resolution.
@@ -480,12 +547,25 @@ def draw_sprite( x: int, y:int, sprite_bytes: List[int] ) -> bool :
     bit_mask = 0x0080
     sprite = sprite_bytes
     if 32 == len(sprite) :
+        '''
+        To reduce the special-casing, convert an SCHIP 16x16 sprite from
+        a list of 32, 8-bit ints, to a list of 16, 16-bit ints, adjusting
+        the bit_mask accordingly.
+        '''
         bit_mask = 0x8000
         sprite = []
         for i in range(0, 32, 2) :
             sprite.append( ( sprite_bytes[i] << 8) | sprite_bytes[i+1] )
+    '''
+    Keep the x- and y-coordinates in range, wrapping at the limit, by
+    masking them after each increment.
+    '''
     y_coord = y & y_mask
     for word in sprite :
+        '''
+        Sweep the bit_cursor across the current byte (or word),
+        incrementing the x-coordinate at each bit.
+        '''
         x_coord = x & x_mask
         bit_cursor = bit_mask
         while bit_cursor : # is not zero,
@@ -493,8 +573,14 @@ def draw_sprite( x: int, y:int, sprite_bytes: List[int] ) -> bool :
                 pixel_list.append( ( x_coord, y_coord ) )
             bit_cursor >>= 1
             x_coord = (x_coord + 1) & x_mask
+        '''
+        Increment the y-coordinate for each byte/word.
+        '''
         y_coord = (y_coord + 1) & y_mask
 
+    '''
+    Paint the white pixels we found and exit.
+    '''
     hit = SCREEN.paint_pixel_list( pixel_list )
     QTest.qWait(10)
     return hit
@@ -536,37 +622,13 @@ def sound( on : bool ) -> None :
     pass
 
 '''
-Return the value of a key that is depressed, if any; else return -1.
+
+Return the value of a key that is currently pressed, if any; else return
+-1. The caller compares a test key value in 0..15 to the returned value.
 '''
 
 def key_test(  ) -> int :
-    # TODO: process events and possibly do a wait
-    return -1
-
-'''
-Add an action to the File menu. This is called from the Source module, where
-File>Load and File>Save are actually implemented. This module initializes the
-File menu with only the Quit action, then Source adds its actions.
-'''
-
-from PyQt5.QtWidgets import QAction
-
-def add_file_menu_action( action: QAction ) -> None :
-    pass
-
-'''
-Define the Display window.
-
-DisplayWindow is a QMainWindow, thus it owns the menu bar, and has the
-responsibility for instantiating the File menu and populating it with actions.
-
-'''
-
-from PyQt5.QtWidgets import QMainWindow
-
-class DisplayWindow( QMainWindow ) :
-    pass
-
+    return KEYPAD.pressed_button
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
