@@ -87,7 +87,9 @@ Import needed PyQt classes.
 from PyQt5.QtCore import (
     Qt,
     QPoint,
-    QSize,QRectF
+    QSize,
+    QRectF,
+    QTimer
     )
 
 from PyQt5.QtGui import (
@@ -101,9 +103,11 @@ from PyQt5.QtGui import (
     )
 
 from PyQt5.QtWidgets import (
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QPushButton,
     QSizePolicy,
@@ -216,38 +220,6 @@ class Screen( QLabel ) :
             self.P >>= 1
         self.clear()
 
-    #'''
-    #Return the fact of whether the CHIP-8 pixel at cx, cy is white.
-    #Test the QImage pixel that is near the center of the PxP rectangle
-    #of the CHIP-8 pixel.
-
-    #The test of a monochrome QImage pixel returns Qt.white (0x00ffffff)
-    #or Qt.black (0x00000000), however with the high byte set to 0xff,
-    #which is presumably the alpha-channel value.
-    #'''
-    #def test_pixel( self, cx:int, cy:int ) -> bool :
-        #P = self.P
-        #P2 = int(P/2)
-        #color = self.image.pixel( cx*P + P2, cy*P + P2 )
-        #return color != 0xff000000 # how "black" is reported
-
-    #'''
-    #Paint one CHIP-8 pixel white or black and return the truth of whether it
-    #was previously white. Do the pixel test in-line to save a little time.
-    #'''
-    #def paint_pixel( self, cx:int, cy:int, white:bool=True ) -> bool :
-        #P = self.P # save a few lookups
-        #px = cx*P
-        #py = cy*P
-        #P2 = int(P/2)
-        #present_color = self.image.pixel( cx*P + P2, cy*P + P2 )
-        #was_white = present_color != 0xff000000
-        #color = Qt.white if white else Qt.black
-        #picasso = QPainter( self.image )
-        #picasso.fillRect( px, py, P, P, color )
-        #self.setPixmap( QBitmap.fromImage( self.image ) )
-        #return was_white
-
     '''
     Paint a list of CHIP-8 pixels by the CHIP-8 XOR rule (if black, turn white,
     if white, turn black), and return the truth of whether any were white.
@@ -357,27 +329,64 @@ class KeyPadButton( QToolButton ) :
         spolicy.setHorizontalStretch( 1 )
         spolicy.setVerticalStretch( 1 )
         self.setSizePolicy( spolicy )
+    '''
+    Handle a keyboard keystroke mapped to this button.
+    Set our "down" status true. This changes the background color so you
+    see the button was triggered. It does not send our pressed signal, so
+    generate that manually.
+
+    Start a 50ms one-shot timer that will call key_up below.
+    '''
+    def keyboard_down( self ) :
+        self.setDown( True )
+        self.pressed.emit()
+        QTimer.singleShot( 50, self.keyboard_up )
+    '''
+    On receipt of the timer kick, set our Down status off and emit our
+    released signal.
+    '''
+    def keyboard_up( self ) :
+        self.released.emit()
+        self.setDown( False )
 
 '''
 
-Define the keypad as a 4x4 grid of KeyPadButtons. Capture the "pressed"
-and "release" signals of each button and use them to keep track of which button is currently down,
-or None if none of them are.
+Define the keypad as a 4x4 grid of KeyPadButtons. Capture the "pressed" and
+"release" signals of each button and use them to keep track of which button
+is currently down, or -1 if none of them are.
+
+Keep a list of the 16 buttons so they can be referenced from the
+DisplayWindow during a keyPressEvent.
 
 '''
 
 class KeyPad( QWidget ) :
     def __init__(self, parent=None) :
         super().__init__( parent )
+        '''
+        Variable records the currently-down button or -1
+        '''
         self.pressed_button = -1
+        '''
+        List the 16 buttons in order so they can be called individually.
+        '''
+        self.buttons = []
+        '''
+        Set up the button layout grid. min_size ensures that the
+        button-squares are at least that many pixels wide.
+        '''
         grid = QGridLayout( )
         self.setLayout( grid )
         min_size = 32
         for n in range( 4 ) :
             grid.setColumnMinimumWidth( n, min_size )
             grid.setRowMinimumHeight( n, min_size )
+        '''
+        Create the buttons and lay them out.
+        '''
         for code in range(16) :
             kp_button = KeyPadButton( code )
+            self.buttons.append( kp_button )
             grid.addWidget(
                 kp_button,
                 code // 4,
@@ -405,9 +414,155 @@ class KeyPad( QWidget ) :
         '''
         self.pressed_button = -1
 
+    def keyboard_hit ( self, button ) :
+        '''
+        DisplayWindow calls here when the user hits a keyboard key that is
+        mapped to a keypad button. If a key is already down (due to mouse
+        action, or due to the user hitting a second key before the oneshot
+        timer used by the KeyPadButton class has expired) just ignore it.
+        Otherwise, pass it on to the button concerned.
+        '''
+        if self.pressed_button == -1 :
+            that_button = self.buttons[ button ]
+            that_button.keyboard_down()
 
+'''
+Define a custom combo-box widget which presents the user a choice of
+keyboard mappings for the keypad. A mapping is a string of 16 characters
+that are mapped to the keypad buttons 0-15 by the DisplayWindow keyPressEvent
+handler.
 
+A list of default maps is passed to the initializer and used to populate
+the combobox. We also check the settings to see if we have saved
+any user-defined key maps, and add them to the choices.
 
+'''
+
+class KeyChoiceCombo( QComboBox ) :
+    def __init__( self, map_list, settings, parent=None ) :
+        super().__init__( parent )
+        '''
+        Save the default maps for reference during shutdown.
+        '''
+        self.default_maps = map_list
+        '''
+        Populate the choices with defaults.
+        '''
+        for string in map_list :
+            self.addItem( string )
+        '''
+        Look in settings for a list of other key maps. If there are
+        none, settings.beginArray returns 0.
+        '''
+        entries = settings.beginReadArray( 'display_page/keymap' )
+        for j in range( entries ) :
+            settings.setArrayIndex( j )
+            new_map = settings.value( 'map' )
+            self.addItem( new_map )
+        settings.endArray()
+        '''
+        Add a separator and two special commands to the end of the list.
+        This is really not good UI design, but the alternative would be
+        to have a whole menu command set and blah blah.
+        '''
+        self.insertSeparator( 99 )
+        self.addItem( 'Enter new map' )
+        self.addItem( 'Delete map' )
+        '''
+        Possibly we recorded the last list index in the settings?
+        If not, default to 0.
+        '''
+        self.setCurrentIndex( settings.value( 'display_page/map_index', 0 ) )
+        '''
+        Keep track of the last "real" index the user selected and the
+        map string to which it corresponds.
+        '''
+        self.last_good_index = self.currentIndex()
+        self.current_map = self.currentText()
+        '''
+        Hook up the activated (user-selected-choice) signal to our own
+        method where we look for the choice of commands.
+        '''
+        self.activated.connect( self.new_choice )
+
+    '''
+    Upon the user actually selecting a map from the combobox, look to
+    see if the choice is one of our two commands, or just a different map.
+    '''
+    def new_choice(self, index ) :
+        if self.itemText( index ) == 'Enter new map' :
+            '''
+            The choice is to enter a new map. Get text from the user.
+            If the user clicks Cancel or hits ESC, new_map is null.
+            '''
+            ( new_map, ok )  = QInputDialog.getText(
+                self,
+                'Map keys to keypad',
+                '16 characters')
+            test_set = set( new_map )
+            if ( len( new_map ) == 16 ) and len( test_set ) == 16 :
+                '''
+                User indeed entered exactly 16 unique characters.
+                Insert that into the combobox as a choice, following
+                the default 4. Set the current index to it, and set it
+                as our current map string.
+                '''
+                self.insertItem( 4, new_map )
+                self.setCurrentIndex( 4 )
+                self.last_good_index = 4
+                self.current_map = new_map
+            else:
+                '''
+                The user cancelled out or didn't enter 16 unique chars.
+                Force the combobox back to the last good index. The
+                current_map has not changed.
+                '''
+                self.setCurrentIndex( self.last_good_index )
+        elif self.itemText( index ) == 'Delete map' :
+            '''
+            The choice is to delete an existing map. Get text from the
+            user. If the user cancels out or enters nothing, do nothing.
+            '''
+            ( old_map, ok )  = QInputDialog.getText(
+                self,
+                'Delete which map',
+                'Leading characters')
+            if ok and len( old_map ) > 2 :
+                '''
+                Scan our current list of choices looking for matching
+                leading characters. Don't scan down to the two commands
+                at the end. If a match is found, delete that item and
+                set the current index to 0.
+                '''
+                for i in range( self.count() - 2 ) :
+                    if self.itemText( i ).startswith( old_map ) :
+                        self.removeItem( i )
+                        self.last_good_index = 0
+                        self.setCurrentIndex( 0 )
+                        self.current_map = self.itemText( 0 )
+                        break
+        else :
+            '''
+            The user has selected one of the map entries. Note that.
+            '''
+            self.last_good_index = index
+            self.current_map = self.itemText( index )
+    '''
+    It's time to shut down. Save our current index.
+    Then run through our current set of choices, and
+    any that are not in the default set, write into an array in settings.
+    '''
+    def shutdown( self, settings ) :
+        settings.setValue( 'display_page/map_index', self.currentIndex() )
+        settings.beginWriteArray( 'display_page/keymap' )
+        array_index = 0
+        for j in range( self.count() -3 ) :
+            that_map = self.itemText( j )
+            if that_map not in self.default_maps :
+                settings.setArrayIndex( array_index )
+                settings.setValue( 'map', that_map )
+                array_index += 1
+        settings.endArray()
 
 '''
 
@@ -415,7 +570,7 @@ Define the main window in which our stuff is displayed.
 When instantiated, it instatiates everything else.
 
 '''
-class MasterWindow( QWidget ) :
+class DisplayWindow( QWidget ) :
     def __init__( self, settings ) :
         super().__init__( None )
         '''
@@ -429,17 +584,40 @@ class MasterWindow( QWidget ) :
         vbox = QVBoxLayout()
         self.setLayout( vbox )
         '''
-        Instantiate the screen. It is on the left.
+        Instantiate the screen.
         '''
         self.screen = Screen()
         vbox.addWidget( self.screen, 10 )#, Qt.AlignTop | Qt.AlignLeft
 
         '''
-        Instantiate the keypad on the right.
+        Instantiate the keypad.
         '''
         self.keypad = KeyPad()
         vbox.addWidget( self.keypad, 9 )#, Qt.AlignTop | Qt.AlignRight
 
+        '''
+        Define the default key_maps. A key map is a string of 16
+        unique characters which are mapped to the 16 keypad keys.
+        The following four maps are always present, but if the user
+        defined others, they are saved in settings and restored.
+        '''
+        self.key_maps = [
+            '1234qwerasdfzxcv', # left side, right or left hand
+            '7890uiopjkl;m,.?', # right side, left hand
+            '4567ertysdfgzxcv', # middle, right hand
+            '0123456789abcdef'  # literal
+            ]
+
+        '''
+        Instantiate the key-mapping combobox, a very clever combobox
+        it is, too. Pass it the list of default key maps and the settings
+        so it can recover any custom maps.
+        '''
+        self.key_mapper = KeyChoiceCombo( self.key_maps, settings )
+        hbox = QHBoxLayout( )
+        hbox.addStretch()
+        hbox.addWidget( self.key_mapper )
+        vbox.addLayout( hbox )
         '''
         Set the window title
         '''
@@ -453,12 +631,30 @@ class MasterWindow( QWidget ) :
         self.move(   settings.value( "display_page/position", QPoint(100, 100) ) )
 
     '''
-    Override the built-in closeEvent() method to save our geometry in the
-    settings.
+
+    Implement a keyPressEvent handler in order to direct keyboard keys to the
+    keypad buttons. Get the actual character (not an integer Qt enum) from the
+    event.text(). Test that against the current key map maintained in the
+    key_mapper. If it is there, we have a hit and its index is the keypad
+    button to activate. Call KeyPad.keyboard_hit( keynumber )
+    to tell it to act. What happens then is not our business...
+
+    '''
+    def keyPressEvent(self, event):
+        key = event.text()
+        index = self.key_mapper.current_map.find( key )
+        if index != -1 :
+            event.accept() # yes, we handle this event
+            self.keypad.keyboard_hit( index )
+
+    '''
+    Override the built-in closeEvent() method to save our geometry and key
+    map in the settings.
     '''
     def closeEvent( self, event ) :
         self.settings.setValue( "display_page/size", self.size() )
         self.settings.setValue( "display_page/position", self.pos() )
+        self.key_mapper.shutdown( self.settings )
         super().closeEvent( event ) # pass it along
 
 '''
@@ -478,7 +674,7 @@ def initialize( settings: QSettings ) -> None :
     Create the window and everything in it.
     Pass the settings object for its use.
     '''
-    OUR_WINDOW = MasterWindow( settings )
+    OUR_WINDOW = DisplayWindow( settings )
     '''
     Set up for quick access to screen and keypad
     '''
@@ -639,7 +835,9 @@ if __name__ == '__main__' :
     from PyQt5.QtWidgets import QApplication
     args = []
     the_app = QApplication( args )
-    initialize(QSettings())
+    settings = QSettings()
+    #settings.clear()
+    initialize(settings)
     OUR_WINDOW.show()
     sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
     draw_sprite( 4, 4, sprite )
