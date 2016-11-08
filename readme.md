@@ -391,7 +391,7 @@ Source:
 Display:
 
 *   <strike>Code and test keypad</strike>
-*   Design and test keypad/keyboard assignments
+*   <strike>Design and test keypad/keyboard assignments</strike>
 *   Implement remaining display instructions (scroll, etc)
 *   Implement sound
 
