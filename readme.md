@@ -392,7 +392,7 @@ Display:
 
 *   <strike>Code and test keypad</strike>
 *   <strike>Design and test keypad/keyboard assignments</strike>
-*   Implement remaining display instructions (scroll, etc)
+*   <strike>Implement remaining display instructions (scroll, etc)</strike>
 *   Implement sound
 
 Memory:

@@ -88,7 +88,7 @@ from PyQt5.QtCore import (
     Qt,
     QPoint,
     QSize,
-    QRectF,
+    QRect,
     QTimer
     )
 
@@ -240,6 +240,61 @@ class Screen( QLabel ) :
         return hit
 
     '''
+    Implement scrolling. The same technique is used in all three scrolls. We
+    define a rectangle the current size of the screen, except displaced in
+    the opposite direction to the scroll (e.g. to the left when scrolling
+    right). We use that as the argument to the QImage.copy() method, which
+    returns a new QImage containing pixels from the current image where it
+    falls inside the rectangle, and black pixels where the rectangle falls
+    outside.
+
+    It's just really cool that the Qt folks thought to properly support
+    negative X/Y values like this.
+    '''
+    def displace_rect( self, rect, x_diff, y_diff ) :
+        '''
+        If one only calls QRect.setX(), it helpfully extends the rectangle
+        to make its area larger. This function makes a new rect that is
+        simply displaced, same width and height.
+        '''
+        return QRect( rect.x()+x_diff, rect.y()+y_diff, rect.width(), rect.height() )
+
+    def scroll_right( self ) :
+        P = self.P
+        offset = P * ( 4 if self.extended_mode else 2 )
+        new_rect = self.displace_rect( self.image.rect(), -offset, 0 )
+        new_image = self.image.copy( new_rect )
+        self.image = new_image
+        self.setPixmap( QBitmap.fromImage( self.image ) )
+
+    def DBGPRECT( self, rect, title ) :
+        print( title )
+        print( 'rect x={} y={} w={} h={}'.format(rect.x(),rect.y(),rect.width(),rect.height() ) )
+
+    '''
+    Implement scroll-left. Same technique as scroll-right.
+    '''
+    def scroll_left( self ) :
+        P = self.P
+        offset = P * ( 4 if self.extended_mode else 2 )
+        new_rect = self.displace_rect( self.image.rect(), offset, 0 )
+        new_image = self.image.copy( new_rect )
+        self.image = new_image
+        self.setPixmap( QBitmap.fromImage( self.image ) )
+
+    '''
+    And scroll-down.
+    '''
+    def scroll_down( self, rows ) :
+        P = self.P
+        offset = P * rows
+        new_rect = self.displace_rect( self.image.rect(), 0, -offset )
+        new_image = self.image.copy( new_rect )
+        self.image = new_image
+        self.setPixmap( QBitmap.fromImage( self.image ) )
+
+
+    '''
     Let Layout managers know we like to be 1x2 in geometry. Note this is only
     effective when we are laid out with Qt.AlignTop! If that is not specified
     on layout, heightForWidth is never called.
@@ -297,15 +352,11 @@ class Screen( QLabel ) :
                          and threshhold_w <= ( new_w - old_w ) )
         if do_resize :
             self.P = int( new_w / ( 128 if self.extended_mode else 64 ) )
-            dbgw = self.P * ( 128 if self.extended_mode else 64 )
-            dbgh = self.P * ( 64 if self.extended_mode else 32 )
             new_size = QSize(
                 self.P * ( 128 if self.extended_mode else 64 ),
                 self.P * ( 64 if self.extended_mode else 32 )
                 )
             self.image = QImage( new_size, QImage.Format_RGB32 )
-            dbg1 = self.image.size().width()
-            dbg2 = self.image.size().height()
             self.clear()
         super().resizeEvent( event )
 
@@ -647,6 +698,7 @@ class DisplayWindow( QWidget ) :
             event.accept() # yes, we handle this event
             self.keypad.keyboard_hit( index )
 
+
     '''
     Override the built-in closeEvent() method to save our geometry and key
     map in the settings.
@@ -786,29 +838,31 @@ Clear the emulated screen to all-black.
 '''
 
 def clear( ) -> None :
-    pass
+    SCREEN.clear()
 
 '''
 Scroll the emulated screen down N lines.
-TODO: what if mode is now CHIP-8? force SCHIP? or ignore?
+? what if mode is now CHIP-8? force SCHIP? or ignore?
+Decision: just do it. Because most likely, any existing program
+that uses this, has already executed a HIGH to enter SCHIP mode.
 '''
 
 def scroll_down( n:int ) -> None :
-    pass
+    SCREEN.scroll_down( n )
 
 '''
-Scroll the emulated screen 2 or 4 columns left.
+Scroll the emulated screen 2 or 4 columns left, depending on mode.
 '''
 
 def scroll_left( ) -> None :
-    pass
+    SCREEN.scroll_left()
 
 '''
-Scroll the emulated screen 2 or 4 columns right.
+Scroll the emulated screen 2 or 4 columns right, depending on mode.
 '''
 
 def scroll_right( ) -> None :
-    pass
+    SCREEN.scroll_right()
 
 '''
 Turn the emulated beeper/tone on or off.
@@ -840,5 +894,5 @@ if __name__ == '__main__' :
     initialize(settings)
     OUR_WINDOW.show()
     sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
-    draw_sprite( 4, 4, sprite )
+    draw_sprite( 16, 8, sprite )
     the_app.exec_()
