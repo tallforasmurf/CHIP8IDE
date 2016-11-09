@@ -33,14 +33,14 @@ window objects respond to Qt events from user actions.
 
 The window is an independent (that is parent-less) window with the title
 "CHIP-8 Emulator". It can be positioned, minimized or maximized independent
-of the rest of the app. When initialized it sets its geometry from the saved
-settings.
+of the rest of the app. During initialization it sets its geometry from the
+saved settings.
 
 Within the window are the following widgets:
 
 The Memory display is a table showing the 4096 bytes of emulated memory in
-256 rows of 16 bytes. When the emulator has been running and stops, the
-Memory displayscrolls so that the line containing the current PC address is
+128 rows of 32 bytes. When the emulator has been running and stops, the
+Memory display scrolls so that the line containing the current PC address is
 visible. When the emulator is not running, the user can edit individual bytes
 by double-clicking a byte and entering a new value.
 
@@ -48,9 +48,9 @@ Below the memory is a display of the call stack of subroutine return addresses.
 
 The Register display shows the 20 CHIP-8 registers (v0-vF, PC, I, ST, DT).
 When the emulator is not running, the user can edit the contents of these,
-and thus affect the execution of the program when it starts up. (One use for
-this ability: because the DT is not decremented during single-step operation,
-the user could set DT to simulate a change in it.)
+and thus affect the execution of the program when it resumes. (One use for
+this ability: because the DT and ST are not decremented during single-step
+operation, the user could set them to simulate a change.)
 
 The RUN/STOP switch is a QPushbutton in one of two states. When the Emulator
 is not running, the button reads RUN. When clicked, the button toggles to
@@ -212,7 +212,7 @@ STEP_BUTTON = None # type RSSButton
 
 '''
 Define the Instructions/tick widget as a QSpinbox (numeric entry widget)
-with a minimum of 100, max of 10,000 and steps of 100. One of these
+with a minimum of 10, max of 1000 and steps of 10. One of these
 will be instantiated when we initialize().
 
 A reference to it is stored in INST_PER_TICK for easy access.
@@ -224,10 +224,10 @@ The start value is taken from saved settings.
 class InstPerTick( QSpinBox ) :
     def __init__( self, start_value:int ) :
         super().__init__( None )
-        self.setMinimum( 1 ) #DBG
-        self.setMaximum( 10000 )
+        self.setMinimum( 10 )
+        self.setMaximum( 1000 )
         self.setValue( start_value )
-        self.setSingleStep( 100 )
+        self.setSingleStep( 10 )
 
 INST_PER_TICK = None # type InstPerTick
 
@@ -361,7 +361,7 @@ class MemoryModel( QAbstractTableModel ) :
                | Qt.ItemIsEnabled
 
     '''
-    Return the fixed dimensions of the memory table, 128 rows of 32 columns.
+    Return the fixed dimensions of the memory table, defined in globals.
     '''
     def rowCount( self, index ) :
         if index.isValid() : return 0
@@ -437,9 +437,11 @@ class MemoryModel( QAbstractTableModel ) :
         col = index.column()
         chip8.MEMORY[ ( row * MEM_TABLE_COLS) + col ] = number
         return True
+
 '''
-Define the register display as a QTableView having only a header row and one data row.
-The Table view is based on a QAbstractTableModel that serves up the register contents.
+Define the register display as a QTableView having only a header row and one
+data row. The Table view is based on a QAbstractTableModel that serves up the
+register contents.
 '''
 
 class RegisterDisplay( QTableView ) :
@@ -544,7 +546,6 @@ class RegisterModel( QAbstractTableModel ) :
 '''
 Define the Call Stack widget as a QListView based on a QAbstractListModel
 which represents the CALL_STACK.
-
 '''
 
 class CallStackDisplay( QListView ) :
@@ -586,10 +587,6 @@ class CallStackModel( QAbstractListModel ) :
     def rowCount( self, index ) :
         if index.isValid() : return 0
         return 12
-
-    #def columnCount( self, index ) :
-        #if index.isValid() : return 0
-        #return 12
 
     '''
     A Model returns "flags" that let the view know what can be done with
@@ -680,20 +677,16 @@ class StatusLine( QLabel ):
 STATUS_LINE = None # type: StatusLine
 
 '''
-Define the window. The various widgets are all instantiated during the initialization
-code of this object. Note that the chip8 module should have been initialized before
-this module.
+Define the window. The various widgets are all instantiated during the
+initialization code of this object. Note that the chip8 module should have
+been initialized before this module.
 '''
+
 class MasterWindow( QWidget ) :
 
     def __init__( self, settings ) :
         global RUN_STOP_BUTTON, STEP_BUTTON, INST_PER_TICK, SETTINGS, STATUS_LINE
         super().__init__( None )
-        '''
-        Set the window's focus policy to click-to-focus. Don't want tabbing
-        between the top level windows.
-        '''
-        self.setFocusPolicy( Qt.ClickFocus )
         '''
         Create a vertical box layout and make it this widget's layout.
         '''
@@ -710,6 +703,11 @@ class MasterWindow( QWidget ) :
         '''
         self.register_display = RegisterDisplay()
         vbox.addWidget( self.register_display, 5, Qt.AlignHCenter )
+        '''
+           resize the columns to minimize the tables
+        '''
+        self.memory_display.resizeColumnsToContents()
+        self.register_display.resizeColumnsToContents()
         '''
         * The call stack, in an hbox with a label.
         '''
@@ -755,16 +753,9 @@ class MasterWindow( QWidget ) :
         * The instructions/tick spinner, initialized to its saved
           previous value.
         '''
-        INST_PER_TICK = InstPerTick( settings.value( "memory_page/spinner", 100 ) )
+        INST_PER_TICK = InstPerTick( SETTINGS.value( "memory_page/spinner", 10 ) )
         hbox.addWidget( INST_PER_TICK )
         hbox.addStretch( 10 )
-        '''
-        Everything has been instantiated and the tables have
-        initialized themselves. Now is the time to tell them
-        to size columns to contents.
-        '''
-        self.memory_display.resizeColumnsToContents()
-        self.register_display.resizeColumnsToContents()
         '''
         Register a callback with the emulator to be notified when
         the vm is reset.
@@ -870,11 +861,14 @@ class MasterWindow( QWidget ) :
     '''
     Tell our attached display widgets that their underlying data has
     now finished updating. Make the memory display show the PC row.
+    Make the tables resize columns to contents.
     '''
     def end_resets( self ) :
         self.memory_display.model().endResetModel()
         self.call_stack_display.model().endResetModel()
-        self.register_display.model().endResetModel()
+        self.memory_display.resizeColumnsToContents()
+        self.register_display.resizeColumnsToContents()
+        dbg = chip8.REGS[ R.P ]
         self.memory_display.scroll_to_PC( chip8.REGS[ R.P ] )
 
     '''
@@ -903,7 +897,7 @@ that. Further initialization has to wait until the thread is started. Then it
 initializes a 1/60th second timer and a QWaitCondition.
 
 In operation the thread executes in its run() method, which waits on the
-WaitCondition, then runs the emulator until it returns an error, or the
+WaitCondition, then runs the emulator until it returns an error or the
 Run/Stop switch changes state, whichever comes first.
 
 '''
@@ -922,9 +916,9 @@ class RunThread( QThread ) :
 
     def post_init( self ) :
         '''
-        Create a one-shot timer with an interval of 1/60th second, or
-        just a skosh less, which should not be a problem. For one thing,
-        we probably blow one millisecond just getting it restarted.
+        Create a one-shot timer with an interval of 1/60th second, or just a
+        skosh less, which should not be a problem. For one thing, we probably
+        blow one millisecond just getting it restarted.
 
         The timer is (re)started with start(). As long as it isActive() the
         interval has not expired.
