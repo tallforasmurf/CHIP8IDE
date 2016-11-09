@@ -149,7 +149,7 @@ NOTIFY_LIST = [] # type List[Callable]
 
 def reset_notify( callback : Callable ) -> None :
     global NOTIFY_LIST
-    NOTIFY_LIST.append( callable )
+    NOTIFY_LIST.append( callback )
 
 '''
 Reset the virtual machine to starting condition:
@@ -225,7 +225,7 @@ def reset_vm( memload : List[int] = None ) -> None :
     '''
     for callback in NOTIFY_LIST :
         try : # trust nobody
-            callback()
+            callback( )
         except Exception as E:
             pass
 
