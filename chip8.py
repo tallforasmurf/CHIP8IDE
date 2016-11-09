@@ -274,13 +274,15 @@ def closeEvent( ) -> None :
     pass
 
 '''
-Note passage of 1/60th of second by decrementing the T reg.
+Note passage of 1/60th of second by decrementing the T and S regs.
 '''
 
 def tick( ) -> None :
     global REGS
     if REGS[R.T] :
         REGS[R.T] -= 1
+    if REGS[R.S] :
+        REGS[R.S] -= 1
 
 '''
 
