@@ -371,13 +371,16 @@ All modules:
 * complete type annotations and run checker
 
 Emulator:
+
 * Add registry for "stopped" callback
 
 Assembler:
+
 * Add assembled PC to Statement object
 * Add assembled value to Statement object
 
 Source:
+
 * treat tab as 4spaces not 8?
 * Add Find/Replace dialog, ^f ^g/^G ^t ^= 
 * Add ^E jump to next error
@@ -396,7 +399,8 @@ Display:
 *   Implement sound
 
 Memory:
-* scroll display to 0200 on reset
-* Highlight current inst. whenever stopped
-* update both tables on any stop
-* execution not cleared on LOAD button?
+
+* <strike>scroll display to 0200 on reset</strike>
+* <strike>Highlight current inst. whenever stopped</strike>
+* <strike>update both tables on any stop</strike>
+* <strike>execution not cleared on LOAD button?</strike>

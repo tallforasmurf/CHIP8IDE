@@ -100,6 +100,8 @@ from PyQt5.QtCore import (
     QAbstractListModel,
     QAbstractTableModel,
     QCoreApplication,
+    QItemSelection,
+    QItemSelectionModel,
     QMutex,
     QPoint,
     QSettings,
@@ -308,7 +310,7 @@ class MemoryDisplay( QTableView ) :
         self.setWordWrap(False)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerItem)
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setSelectionMode(QAbstractItemView.ContiguousSelection)
 
         self.setItemDelegate( MemoryEdit() )
         '''
@@ -330,16 +332,40 @@ class MemoryDisplay( QTableView ) :
         mm = MemoryModel( self )
         self.setModel( mm )
 
+
     '''
-    Define a scroll-to-PC method, taking an emulated PC value and ensuring
-    it is visible on the screen. This involves a trip through the MVC
-    architecture...
+    Define a scroll-to-PC method, taking an emulated PC value, selecting it
+    and ensuring it is visible on the screen.
+
+    This involves a trip through the MVC architecture...
     '''
     def scroll_to_PC( self, PC:int ) -> None :
-        row = int( PC / MEM_TABLE_COLS )
-        col = int( PC % MEM_TABLE_COLS )
-        index = self.model().createIndex( row, col )
-        self.scrollTo( index, QAbstractItemView.PositionAtCenter )
+        '''
+        Define a range of model indexes that span the first and second bytes
+        of the instruction at the PC. Rarely, this may be the last byte in
+        one row and the first byte of the next row.
+        '''
+        start_index = self.model().createIndex(
+            PC / MEM_TABLE_COLS,
+            PC % MEM_TABLE_COLS )
+        end_index = self.model().createIndex(
+            (PC+1) / MEM_TABLE_COLS,
+            (PC+1) % MEM_TABLE_COLS )
+        dbg = [start_index.row(),start_index.column()]
+        dbg2 = [end_index.row(), end_index.column() ]
+        '''
+        Position the table so the (first) row is centered.
+        '''
+        self.scrollTo( start_index, QAbstractItemView.PositionAtCenter )
+        '''
+        Create an Item Selection covering the range of those two cells.
+        '''
+        sel_item = QItemSelection( start_index, end_index )
+        '''
+        Using our ItemSelectionModel, do the selection?
+        '''
+        self.selectionModel().select( sel_item, QItemSelectionModel.ClearAndSelect )
+
 
 
 class MemoryModel( QAbstractTableModel ) :
