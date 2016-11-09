@@ -673,6 +673,11 @@ class DisplayWindow( QWidget ) :
         Set the window title
         '''
         self.setWindowTitle( "CHIP-8 I/O" )
+        '''
+        Set the window's focus policy to click-to-focus. Don't want tabbing
+        between the top level windows.
+        '''
+        self.setFocusPolicy( Qt.ClickFocus )
 
         '''
         With all widgets created, resize and position the window

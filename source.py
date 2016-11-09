@@ -426,7 +426,11 @@ class SourceWindow( QMainWindow ) :
         '''
         widg.setLayout( vbox )
         self.setCentralWidget( widg )
-
+        '''
+        Set the window's focus policy to click-to-focus. Don't want tabbing
+        between the top level windows.
+        '''
+        self.setFocusPolicy( Qt.ClickFocus )
         '''
         With all widgets created and layed-out, recover
         the previous geometry from the settings.

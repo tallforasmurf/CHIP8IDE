@@ -757,6 +757,11 @@ class MasterWindow( QWidget ) :
         hbox.addWidget( INST_PER_TICK )
         hbox.addStretch( 10 )
         '''
+        Set the window's focus policy to click-to-focus. Don't want tabbing
+        between the top level windows.
+        '''
+        self.setFocusPolicy( Qt.ClickFocus )
+        '''
         Register a callback with the emulator to be notified when
         the vm is reset.
         '''
