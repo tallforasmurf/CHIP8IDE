@@ -708,7 +708,7 @@ class SourceWindow( QMainWindow ) :
         The file might be an assembly source. If so, it will be possible to
         decode it as ASCII. Note that even decode('ASCII',errors='strict') is
         not really strict; it will pass any byte less than 0x80. A CHIP-8
-        binary is almost guaranteed to contain a byte over 0x80.
+        binary however, is almost guaranteed to contain a byte over 0x80.
 
         This disallows Latin-1 in assembler source files, or at least disallows
         the use of any character over 0x7f, symbols and accented characters.
@@ -720,9 +720,23 @@ class SourceWindow( QMainWindow ) :
         source_string = ''
         try:
             source_string = byte_string.decode( 'ASCII', errors='strict' )
+            '''
+            It's an assembly source, so set the filename as our window title,
+            and the file path as our file path -- i.e. it is safe to do a
+            File>Save onto this file after editing.
+            '''
+            (prefix, filename) = os.path.split( chosen_path )
+            self.set_file_name( filename, path=prefix )
 
         except Exception as E:
+            '''
+            It's a binary file. Convert to a source file, but we really do not
+            want to encourage File>Save which would wipe out the binary with
+            the source. So force it to an equivalent of New.
+            '''
             source_string = disassemble( byte_string )
+            self.set_file_name( "Untitled" )
+            self.document.setModified( True )
 
         '''
         Install the source string as the contents of our document.
@@ -731,12 +745,6 @@ class SourceWindow( QMainWindow ) :
         self.document.setPlainText( source_string )
         self.document.setModified( False )
 
-        '''
-        Set the filename as our window title, and the file path as
-        our file path.
-        '''
-        (prefix, filename) = os.path.split( chosen_path )
-        self.set_file_name( filename, path=prefix )
         return True
 
     '''
