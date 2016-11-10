@@ -80,7 +80,7 @@ Define this module's API:
    the RSSButton class
 Really, that's it. It opens the window and away we go.
 '''
-__all__ = [ 'initialize', 'MONOFONT', 'MONOFONT_METRICS', 'RSSButton' ]
+__all__ = [ 'initialize', 'MONOFONT', 'MONOFONT_METRICS', 'RSSButton', 'connect_signal' ]
 
 
 '''
@@ -96,6 +96,7 @@ Import needed Qt names.
 '''
 
 from PyQt5.QtCore import (
+    pyqtSignal,
     Qt,
     QAbstractListModel,
     QAbstractTableModel,
@@ -709,6 +710,11 @@ been initialized before this module.
 '''
 
 class MasterWindow( QWidget ) :
+    '''
+    Define a Qt signal of our own which we emit upon the emulator stopping
+    on a new PC.
+    '''
+    EmulatorStopped = pyqtSignal(int)
 
     def __init__( self, settings ) :
         global RUN_STOP_BUTTON, STEP_BUTTON, INST_PER_TICK, SETTINGS, STATUS_LINE
@@ -916,6 +922,7 @@ class MasterWindow( QWidget ) :
             MEMORY_CHANGED = False
 
         self.memory_display.scroll_to_PC( chip8.REGS[ R.P ] )
+        self.EmulatorStopped.emit( chip8.REGS[ R.P ] )
 
     '''
     Override the built-in closeEvent() method to save our geometry and
@@ -1073,7 +1080,7 @@ class RunThread( QThread ) :
                 Toggle the Run/Stop switch directly.
                 '''
                 RUN_STOP_BUTTON.click()
-            self.message_text += ' ('+str(burn_count)+','+str(shortfall)+')'  # DBG
+            # print(burn_count, shortfall)  # DBG
             '''
             Rinse and repeat.
             '''
@@ -1141,6 +1148,18 @@ def initialize( settings: QSettings ) -> None :
     '''
     OUR_WINDOW.show()
 
+'''
+connect_signal(), a request from some other module (actually, source) to please
+connect their callable to our signal EmulatorStopped.
+
+this can only be done after initialize() has run, because the MasterWindow
+is created then.
+'''
+from typing import Callable
+
+def connect_signal( slot: Callable ) :
+    OUR_WINDOW.EmulatorStopped.connect( slot )
+    # you may kiss the bride...
 
 
 if __name__ == '__main__' :

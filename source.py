@@ -70,7 +70,7 @@ __all__ = [ 'initialize' ]
 Import the monofont prepared by the memory module, and its
 definition of a button class.
 '''
-from memory import MONOFONT, MONOFONT_METRICS, RSSButton
+from memory import MONOFONT, MONOFONT_METRICS, RSSButton, connect_signal
 
 '''
 Import the Statement class.
@@ -271,6 +271,11 @@ class SourceEditor( QPlainTextEdit ) :
         self.last_text_block = None
         self.cursorPositionChanged.connect( self.cursor_moved )
         self.cursor_moved()
+        '''
+        Connect the memory module's EmulatorStopped signal to our show_pc_line
+        slot.
+        '''
+        connect_signal( self.show_pc_line )
 
     '''
     Upon any movement of the cursor, even by one character, this slot
@@ -337,8 +342,12 @@ class SourceEditor( QPlainTextEdit ) :
 
 
     '''
-    Make a given line number (origin-0) the current line and center
-    it in the edit window. This is done by:
+    The following method is the slot to receive the EmulatorStopped signal
+    out of the memory module. The signal carries an int value which is the
+    new PC. We want to find the statement (QTextBlock) that matches that PC,
+    move the edit cursor to that line (thus highlighting it, see cursor_moved above),
+    and make sure it is visible in the window.
+
 
     * getting the QTextBlock that corresponds to that line number
     * making a QTextCursor positioned to that line's origin
@@ -349,12 +358,55 @@ class SourceEditor( QPlainTextEdit ) :
     a cursorMoved signal.
     '''
 
-    def go_to_line( self, line_number ) :
-        text_block_for_line = self.document().findBlockByLineNumber( line_number )
-        cursor = QTextCursor( self.textCursor() )
-        cursor.setPosition( text_block_for_line.position() )
-        self.setTextCursor( cursor )
-        self.centerCursor( )
+    def show_pc_line( self, PC ) :
+        '''
+        If we have main_window.clean_assembly, then we can rely on the S.PC values
+        in the Statements in all the textblocks. If not, we can do nothing.
+        '''
+        if not self.main_window.clean_assembly :
+            return
+        '''
+        Since execution usually moves forward, start looking with the current
+        statement, expecting to get a match on it or the next statement along.
+        '''
+        this_block = self.textCursor().block()
+        '''
+        Scan forward looking for the matching PC, stopping at the end
+        of the document. N.B. empty statements have S.PC=None.
+        '''
+        current_block = this_block
+        while current_block.isValid() :
+            U = current_block.userData()
+            S = U.statement
+            if PC == S.PC : # bingo
+                break
+            current_block = current_block.next()
+        '''
+        If that search failed (not current_block.isValid) then try again
+        starting from the first line of the document down to here.
+        '''
+        if not current_block.isValid() :
+            current_block = self.document().firstBlock()
+            while current_block != this_block :
+                U = current_block.userData()
+                S = U.statement
+                if PC == S.PC :
+                    break
+                current_block = current_block.next()
+
+            if current_block == this_block :
+                '''
+                We failed to get a match, do nothing.
+                '''
+                return
+        '''
+        Make current_block the current cursor line (which invokes cursor_moved, above)
+        and ensure it is visible. It will not necessarily be centered. If it was already
+        visible on the screen, nothing happens.
+        '''
+        self.setTextCursor( QTextCursor( current_block ) )
+        self.ensureCursorVisible()
+
 
     '''
     Create a QTextCharFormat given a color, specified as a string that

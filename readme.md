@@ -370,20 +370,12 @@ All modules:
 * add logging
 * complete type annotations and run checker
 
-Emulator: ? or Memory ?
-
-* Add registry for "stopped" callback
-
-Emulator? Display?
-
-* find out why keypad unresponsive in games
-
 Display:
 
+*   Implement sound
 *   <strike>Code and test keypad</strike>
 *   <strike>Design and test keypad/keyboard assignments</strike>
 *   <strike>Implement remaining display instructions (scroll, etc)</strike>
-*   Implement sound
 
 Source:
 
@@ -393,19 +385,25 @@ Source:
 * Add breakpoint toggling and display (ctl-click or ^b?)
 * Add clear-all-BP button
 * Clear all BP on Open, New
-* Jump cursor to PC statement on stop (registry)
+* <strike>Jump cursor to PC statement on stop (registry)</strike>
 * <strike>On open-binary set name Untitled, clear path</strike>
-* <strike>treat tab as 4spaces not 8?
+* <strike>treat tab as 4spaces not 8?</strike>
 * <strike>Display assembled value, when known, in status line</strike>
+
+Memory:
+
+* Can't edit register table?
+* <strike>Add registry for "stopped" callback</strike>
+* <strike>Don't update the memory table unless it has changed</strike>
+* <strike>scroll display to 0200 on reset</strike>
+* <strike>Highlight current inst. whenever stopped</strike>
 
 Assembler:
 
 * <strike>Add assembled PC to Statement object</strike>
 * <strike>Add assembled value to Statement object</strike>
 
-Memory:
-
-* <strike>scroll display to 0200 on reset</strike>
-* <strike>Highlight current inst. whenever stopped</strike>
+Emulator:
+* <strike>Export a flag set by the STD and STM instructions</strike>
 * <strike>update both tables on any stop</strike>
 * <strike>execution not cleared on LOAD button?</strike>
