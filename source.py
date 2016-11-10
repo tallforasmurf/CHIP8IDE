@@ -242,6 +242,8 @@ class SourceEditor( QPlainTextEdit ) :
            accept the focus by click or by tab
            accept dropped text
            don't wrap lines
+           make tab stops half the default
+              n.b. tabStopWidth is in pixels, defaults to 80
         '''
         font = QFont( MONOFONT )
         font.setPointSize( 12 )
@@ -249,7 +251,7 @@ class SourceEditor( QPlainTextEdit ) :
         self.setFocusPolicy( Qt.StrongFocus )
         self.setAcceptDrops( True )
         self.setLineWrapMode( QPlainTextEdit.NoWrap )
-
+        self.setTabStopWidth( int( self.tabStopWidth()/2 ) )
         '''
         Set up a list of "extra selections", the mechanism by which we get
         the editor to show different lines in different colors. The list is a
