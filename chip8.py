@@ -285,6 +285,7 @@ def closeEvent( ) -> None :
 
 '''
 Note passage of 1/60th of second by decrementing the T and S regs.
+If the sound was on and goes to 0, turn the sound off.
 '''
 
 def tick( ) -> None :
@@ -293,6 +294,9 @@ def tick( ) -> None :
         REGS[R.T] -= 1
     if REGS[R.S] :
         REGS[R.S] -= 1
+        if REGS[R.S] == 0 :
+            display.sound( False )
+
 
 '''
 
