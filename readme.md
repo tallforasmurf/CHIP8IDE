@@ -374,6 +374,17 @@ Emulator: ? or Memory ?
 
 * Add registry for "stopped" callback
 
+Emulator? Display?
+
+* find out why keypad unresponsive in games
+
+Display:
+
+*   <strike>Code and test keypad</strike>
+*   <strike>Design and test keypad/keyboard assignments</strike>
+*   <strike>Implement remaining display instructions (scroll, etc)</strike>
+*   Implement sound
+
 Source:
 
 * Figure out what gives with cursor line on insert newline
@@ -382,22 +393,15 @@ Source:
 * Add breakpoint toggling and display (ctl-click or ^b?)
 * Add clear-all-BP button
 * Clear all BP on Open, New
-* On open-binary set name Untitled, clear path
 * Jump cursor to PC statement on stop (registry)
-* <strike>treat tab as 4spaces not 8?</strike>
+* <strike>On open-binary set name Untitled, clear path</strike>
+* <strike>treat tab as 4spaces not 8?
 * <strike>Display assembled value, when known, in status line</strike>
 
 Assembler:
 
 * <strike>Add assembled PC to Statement object</strike>
 * <strike>Add assembled value to Statement object</strike>
-
-Display:
-
-*   <strike>Code and test keypad</strike>
-*   <strike>Design and test keypad/keyboard assignments</strike>
-*   <strike>Implement remaining display instructions (scroll, etc)</strike>
-*   Implement sound
 
 Memory:
 
