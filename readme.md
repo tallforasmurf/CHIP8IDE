@@ -357,7 +357,7 @@ framework. The unit tests are just hacked in. So sue me.
 
 * Emulator module substantially complete.
 * Memory module substantially complete (see below)
-* Editor mostly complete (see below)
+* Source module mostly complete (see below)
 * Lexical scan and error display complete
 * Assembler substantially complete
 * Disassembler complete
@@ -370,18 +370,13 @@ All modules:
 * add logging
 * complete type annotations and run checker
 
-Emulator:
+Emulator: ? or Memory ?
 
 * Add registry for "stopped" callback
 
-Assembler:
-
-* Add assembled PC to Statement object
-* Add assembled value to Statement object
-
 Source:
 
-* treat tab as 4spaces not 8?
+* Figure out what gives with cursor line on insert newline
 * Add Find/Replace dialog, ^f ^g/^G ^t ^= 
 * Add ^E jump to next error
 * Add breakpoint toggling and display (ctl-click or ^b?)
@@ -389,7 +384,13 @@ Source:
 * Clear all BP on Open, New
 * On open-binary set name Untitled, clear path
 * Jump cursor to PC statement on stop (registry)
-* Display assembled value, when known, in status line
+* <strike>treat tab as 4spaces not 8?</strike>
+* <strike>Display assembled value, when known, in status line</strike>
+
+Assembler:
+
+* <strike>Add assembled PC to Statement object</strike>
+* <strike>Add assembled value to Statement object</strike>
 
 Display:
 
