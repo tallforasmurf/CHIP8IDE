@@ -26,23 +26,24 @@ __email__ = "davecortesi@gmail.com"
 
     CHIP-8 IDE Source Window
 
-This module defines the Source window, which is the Qt Main Window, and owns
-the menus. It displays one main widget, a QTextEdit, and two buttons named
-LOAD and CHECK.
+This module defines the Source window, which is the Qt Main Window and owns
+the menus. It displays one main widget, a QTextEdit, a status line, and two
+buttons named LOAD and CHECK.
 
 CHIP-8 assembly programs are loaded into the editor, or entered there by the
-user. Some errors are caught as statements are entered. An invalid statement
+user. Lexical errors are caught as statements are entered. An invalid statement
 is highlighted by a pink background.
 
 Not all errors can be recognized on entry. For example, a statement that
 refers to a name that has not yet been defined may be an error, or may become
-correct when the name is defined on a later statement or some other
-statement is edited.
+correct when the name is defined on a later statement, or when the spelling
+of the name is edited on this or some other statement.
 
 At any time the CHECK button can be clicked. The existing program source is
-assembled and any error lines are highlighted. Clicking the LOAD button also
-causes assembly (if necessary) and if there are no errors, the assembled
-binary is loaded into the emulator ready to execute.
+assembled and any further error lines are highlighted.
+
+Clicking the LOAD button also causes assembly and if there are no errors, the
+assembled binary is loaded into the emulator ready to execute.
 
 Information about the line on which the edit cursor rests is shown in a
 field below the editor. This can include an error message, or after an
@@ -63,7 +64,7 @@ The File>Load and File>Save commands are implemented in this module.
 '''
 Define exported names. TODO
 '''
-__all__ = [ 'initialize', 'Statement' ]
+__all__ = [ 'initialize' ]
 
 '''
 Import the monofont prepared by the memory module, and its
@@ -85,12 +86,12 @@ from assembler2 import assemble
 from disassemble import disassemble
 
 '''
-Import the reset_vm method of chip8, which implements the Load button.
+Import the reset_vm method of chip8, which is called by the Load button.
 '''
 from chip8 import reset_vm
 
 '''
-Import sys, for .platform and os, os.path for file ops.
+Import sys for .platform, and os/os.path for file ops.
 '''
 import sys
 import os
@@ -141,21 +142,24 @@ from PyQt5.QtWidgets import (
 Define the QSyntaxHighlighter by way of which we inspect each new
 statement after it is edited.
 
-A syntax highlighter is independent of the editor; it is associated
-with a QTextDocument. When first connected to the document, the highlighter
-is called to inspect every line. Thereafter it is called when a line has
-been edited -- the actual trigger for an inspection is not clear.
+A syntax highlighter is independent of the editor; it is associated with a
+QTextDocument. When first connected to the document, the highlighter is
+called to inspect every line. Thereafter it is called whenever a line is
+edited, even by one keystroke.
 
-The job of this highlighter is to validate the current statement, and
-to store the Statement object that results. Validation is done by the
-phase_one() function in module assembler1, where the Statement class is
-also defined.
+The job of this highlighter is to validate the current statement, and to
+store the Statement object that results. Validation is done by the
+phase_one() function in module assembler1.
 
 When phase_one() returns a Statement with is_valid False, we make the
 line turn INVALID_LINE_COLOR.
 
 '''
 
+'''
+The QTextBlock's userData member will only accept a QTextBlockUserData
+object. So we wrap our Statement object in one of those.
+'''
 class StatementWrapper ( QTextBlockUserData ) :
     def __init__( self, statement ) :
         super().__init__( )
@@ -176,14 +180,14 @@ class Highlighter( QSyntaxHighlighter ) :
         self.error_format.setProperty(QTextCharFormat.FullWidthSelection, True)
 
     '''
-    This method is called by the document to inspect any line (actually, QTextBlock,
-    but that means one line in a plain text editor) whenever it changes. Really.
-    Every damn character.
+    This method is called by the document to inspect a line (actually, a
+    QTextBlock, but that means one line in a plain text editor) whenever it
+    changes. Really. Every damn character! So be quick!
 
-    The input is the text of the line as a string. However we can also access the
-    text block itself via self.currentBlock(). The Statement always returned by
-    phase_one() is set as the text block user data, where it provides info to
-    the later assembly passes.
+    The input is the text of the line as a string. However we can also access
+    the text block itself via self.currentBlock(). The Statement object
+    always returned by phase_one() is set as the text block user data, where
+    it provides info to the later assembly passes.
     '''
     def highlightBlock( self, text ) :
         U = self.currentBlockUserData()
@@ -197,8 +201,15 @@ class Highlighter( QSyntaxHighlighter ) :
             U = StatementWrapper( S )
             self.setCurrentBlockUserData( U )
         else :
+            '''
+            We had previously (like, milliseconds ago) made a Statement object
+            for this text block, so just get it out of the wrapper it's in.
+            '''
             S = U.statement
 
+        '''
+        Perform tokenization and lexical validation of this line.
+        '''
         phase_one( text, S )
 
         if S.text_error or S.expr_error :
@@ -206,9 +217,10 @@ class Highlighter( QSyntaxHighlighter ) :
 
 '''
 Define some colors, quite arbitrarily.
-Current line: a very light yellow.
-Invalid statement: pale tomato soup
-Breakpoint line: light lilac
+
+* Current line: a very light yellow.
+* Invalid statement: pale tomato soup
+* Breakpoint line: light lilac
 '''
 CURRENT_LINE_COLOR = "#FAFAE0"
 INVALID_LINE_COLOR = "#FF8090"
@@ -249,7 +261,7 @@ class SourceEditor( QPlainTextEdit ) :
         self.extra_selection_list = [ self.current_line_selection ]
 
         '''
-        Connect the signal that the cursor moved to our routine that updates
+        Connect the signal that the cursor moved, to our routine that updates
         the color of the current line. Set up a current text block variable
         so that routine can know when the actual line has changed. Then fake
         the signal to start us off.
@@ -264,6 +276,7 @@ class SourceEditor( QPlainTextEdit ) :
 
     If we have fields with meta-data about the current line, like the
     current line or column number, this would be the place to update them.
+    But we don't, as of now.
 
     If the cursor is now on a different line number (text block) than before,
     change the cursor in the current-line "extra selection" to the position
@@ -271,8 +284,9 @@ class SourceEditor( QPlainTextEdit ) :
     have a selection. The current cursor might have one, so clear it.
 
     To make the new selection(s) appear we have to call setExtraSelections.
-    The whole list (which might or might not include breakpoints) is set, with
-    the current line selection last so hopefully it will take precedence.
+    The whole list (which might or might not include breakpoints) is set.
+    The current line selection last so it will take precedence over breakpoints
+    (and, it happily turns out, over red error-highlighting).
 
     '''
 
@@ -288,19 +302,36 @@ class SourceEditor( QPlainTextEdit ) :
         self.current_line_selection.cursor = self.current_line_cursor
         self.setExtraSelections( self.extra_selection_list )
         '''
-        Get the Statement out of the current text block and test to see
-        if the line is marked as an error. If so, put any error message
-        in the window status line.
+        Get the Statement out of the current text block and have a look.
         '''
-        self.main_window.status_line.clear()
+        status_msg = ''
         U = text_block.userData()
         if U : # is not None,
             S = U.statement # unwrap the Statement object
             if S.text_error or S.expr_error :
-                msg = S.error_msg
+                '''
+                The new current line is an error line, display its error text
+                in the status line.
+                '''
+                status_msg = S.error_msg
                 if S.error_pos : # is not zero,
-                    msg += ' near ' + str( S.error_pos )
-                self.main_window.status_line.setText( msg )
+                    status_msg += ' near ' + str( S.error_pos )
+            else :
+                '''
+                The new current line is not an error. If it has been assembled,
+                and the document is unchanged, display its text and PC.
+                '''
+                if S.value and self.main_window.clean_assembly :
+                    if S.value_dump == '' :
+                        '''
+                        The line has been assembled but the display needs to be
+                        created for it -- once, so we don't repeat this.
+                        '''
+                        dump = [ '{:02X}'.format(n) for n in S.value ]
+                        S.value_dump = '{:04X} : '.format( S.PC ) + ''.join( dump )
+                    status_msg = S.value_dump
+        self.main_window.status_line.setText( status_msg )
+
 
 
     '''
@@ -384,6 +415,13 @@ class SourceWindow( QMainWindow ) :
         self.status_line.setFont( MONOFONT )
 
         '''
+        Create a flag that shows whether the current source has been
+        assembled and not yet edited since then. Set in do_assembly()
+        and document_changed(), tested in cursor_moved().
+        '''
+        self.clean_assembly = False
+
+        '''
         Create the text edit widget and put it in the layout. Give it
         a reference to this object so it can access the status_line.
         '''
@@ -395,8 +433,10 @@ class SourceWindow( QMainWindow ) :
 
         '''
         Keep a reference to the text document. We need it often.
+        Connect its contentsChanged signal to our contents_changed.
         '''
         self.document = self.editor.document()
+        self.document.contentsChanged.connect( self.contents_changed )
         '''
         Create the syntax highlighter and attach it to the document.
         '''
@@ -501,6 +541,15 @@ class SourceWindow( QMainWindow ) :
         self.file_new()
 
     '''
+    Upon any change whatever in the document since the last assembly,
+    stop displaying assembled values in the status line. It's impossible
+    to define a set of changes that would NOT invalidate at least the
+    PC values of that and following lines.
+    '''
+    def contents_changed( self ):
+        self.clean_assembly = False
+
+    '''
     Internal method common to both Check and Load buttons:
     Pass the first text block of the document to the assemble() function
     which iterates over the source, updating all the Statement objects, and
@@ -541,6 +590,7 @@ class SourceWindow( QMainWindow ) :
             QMessageBox.warning( self, title, msg )
             self.highlighter.rehighlight()
             return None
+        self.clean_assembly = True
         return mem_load
 
     '''

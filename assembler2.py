@@ -562,6 +562,8 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
             try :
                 byte_list = opcode_dict[ S.form ]( S )
                 memory_image[ PC : PC + len( byte_list ) ] = byte_list
+                S.value = list( byte_list )
+                S.PC = PC
             except Exception as E :
                 expr_errors += 1
                 S.expr_error = True
