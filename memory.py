@@ -89,7 +89,7 @@ Import the memory, registers and call stack from the display module.
 
 import chip8
 
-from chip8 import R, reset_vm
+from chip8 import R, reset_vm, MEMORY_CHANGED
 
 '''
 Import needed Qt names.
@@ -882,24 +882,39 @@ class MasterWindow( QWidget ) :
 
     '''
     Tell our attached display widgets that their underlying data will
-    be changing.
+    be changing. There is little time penalty to resetting the call stack and
+    register tables, but don't reset the memory table unless we have to.
     '''
     def begin_resets( self ) :
-        self.memory_display.model().beginResetModel()
         self.call_stack_display.model().beginResetModel()
         self.register_display.model().beginResetModel()
 
     '''
-    Tell our attached display widgets that their underlying data has
-    now finished updating. Make the memory display show the PC row.
+    Update all the display widgets to reflect the new(?) machine state.
+
+    Make the memory display show the PC row.
     Make the tables resize columns to contents.
     '''
     def end_resets( self ) :
-        self.memory_display.model().endResetModel()
+        global MEMORY_CHANGED
+        '''
+        The call stack and register displays have already begun-reset,
+        so finish them.
+        '''
         self.call_stack_display.model().endResetModel()
-        self.memory_display.resizeColumnsToContents()
+        self.register_display.model().endResetModel()
         self.register_display.resizeColumnsToContents()
-        dbg = chip8.REGS[ R.P ]
+        '''
+        We didn't initiate the reset on memory because it is so expensive
+        it makes STEP slow to respond. And usually isn't needed. Was it
+        needed?
+        '''
+        if MEMORY_CHANGED :
+            self.memory_display.model().beginResetModel()
+            self.memory_display.model().endResetModel()
+            self.memory_display.resizeColumnsToContents()
+            MEMORY_CHANGED = False
+
         self.memory_display.scroll_to_PC( chip8.REGS[ R.P ] )
 
     '''
