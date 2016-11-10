@@ -34,6 +34,7 @@ __all__ = [
     'REGS',         # dict of regs, keyed by R.
     'MEMORY',       # emulated memory, one int per emulated byte
     'CALL_STACK',   # emulated call stack
+    'MEMORY_CHANGE',# flag set when memory modified
     'reset_vm',     # clear memory, regs, call stack
     'step',         # execute one emulated instruction
     'tick',         # note passage of 1/60th second
@@ -88,6 +89,13 @@ MEMORY is the 4096-byte emulated memory, stored as a list of ints.
 '''
 
 MEMORY = [] # type List[int]
+
+'''
+MEMORY_CHANGED is a flag set during the only two instructions that can
+actually modify memory, STM and STD. The Memory module uses this to know
+when to update the memory display table.
+'''
+MEMORY_CHANGED = False
 
 '''
 CALL_STACK is a 12-entry list of return addresses. Refer to the COSMAC VIP
@@ -161,6 +169,7 @@ Reset the virtual machine to starting condition:
 * Display set to CHIP-8 mode
 * Sound turned off
 * Memory cleared
+* MEMORY_CHANGED flag set True
 * 5x4 font sprites loaded in 0x0000..0x004F (5*16 == 80 == 0x50)
 * 10x8 SCHIP font sprites loaded in 0x0050..0x00EF (10*16 == 160 == 0xA0)
 * Optionally, memory from 0x0200 loaded with a program
@@ -180,7 +189,7 @@ from typing import List
 
 def reset_vm( memload : List[int] = None ) -> None :
 
-    global MEMORY, REGS, CALL_STACK
+    global MEMORY, MEMORY_CHANGED, REGS, CALL_STACK
 
     '''
     Clear the call stack.
@@ -210,6 +219,7 @@ def reset_vm( memload : List[int] = None ) -> None :
     MEMORY = [0] * 4096
     MEMORY[ 0:80 ] = FONT_5x4
     MEMORY[ 80:240 ] = FONT_8x10
+    MEMORY_CHANGED = True
 
     '''
     If a memload is supplied, it is a list of ints which are the
@@ -852,6 +862,7 @@ def do_store_decimal( INST: int, PC: int ) -> int :
     MEMORY[ I_reg ] = int( vx/100 ) # high digit
     MEMORY[ I_reg + 1 ] = int( vx % 100 / 10 )
     MEMORY[ I_reg + 2 ] = int( vx % 10 )
+    MEMORY_CHANGED = True
     return PC+2
 
 '''
@@ -888,6 +899,8 @@ def do_store_regs( INST: int, PC: int ) -> int :
     for i in range( vx+1 ) :
         MEMORY[ I_reg ] = REGS[ i ]
         I_reg += 1
+
+    MEMORY_CHANGED = True
 
     REGS[R.I] = I_reg # "I = I + X + 1" as per COSMAC manual
     return PC+2
