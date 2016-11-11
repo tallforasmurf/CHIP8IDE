@@ -314,7 +314,7 @@ instructions. For simplicity all have the INST and PC values formatted in.
 '''
 
 EMSG_BAD_INST = 'Undefined instruction {0:04X} at {1:04X}'
-EMSG_BP = 'Breakpoint on {0:04X} at {0:04X}'
+EMSG_BP = 'Breakpoint on {0:04X} at {1:04X}'
 EMSG_BAD_CALL = 'Subroutine call but stack is full {0:04X} at {1:04X}'
 EMSG_BAD_RET = 'Return but empty call stack {0:04X} at {1:04X}'
 EMSG_EXIT = 'Emulator termination {0:04X} at {1:04X}'
@@ -1084,7 +1084,9 @@ def step( ) -> str :
 
         REGS[R.P] = dispatch_first_nybble[ INST & 0xF000 ]( INST, PC )
         if REGS[R.P] in BREAKPOINTS :
-            error_message = emsg_format( EMSG_BP, 0, REGS[R.P] )
+            PC = REGS[R.P]
+            INST = ( MEMORY[PC] << 8 ) | MEMORY[PC+1]
+            error_message = emsg_format( EMSG_BP, INST, PC )
 
     except ValueError as VE :
 
