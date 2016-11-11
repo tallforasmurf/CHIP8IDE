@@ -925,10 +925,6 @@ class SourceWindow( QMainWindow ) :
         temp_action.setToolTip( 'Save the assembly program in a file by name' )
         temp_action.triggered.connect(self.file_save_as)
 
-        ### DBG TEMP ONLY REMOVE
-        temp_action = self.file_menu.addAction( 'Bazongas!' )
-        temp_action.triggered.connect( self.bazongas )
-
         '''
         Create the Quit action, which Qt will put in the appropriate menu
         for the platform: File menu for Windows and Linux, App menu for mac.
