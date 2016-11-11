@@ -241,7 +241,7 @@ double-clicked. In the world of Qt MVC, a styled item delegate manages the
 editing of a table item. It has to implement three methods:
 
 * createEditor() creates a widget to do the editing, in this case,
-  a QLineEdit with a validator.
+  a QLineEdit with an input mask.
 
 * setEditorData() loads the editor widget with initial data
 
@@ -377,9 +377,7 @@ class MemoryModel( QAbstractTableModel ) :
     '''
     The flags method tells Qt what the user can do with the table. We allow
     editing (of one byte at a time, see setSelectionMode) but only if the
-    emulator is stopped. The MasterWindow uses the beginResetModel() call to
-    ensure that nothing will be done with this table while the emulator is
-    running.
+    emulator is stopped.
     '''
     def flags( self, index ) :
         return Qt.ItemNeverHasChildren \
@@ -443,22 +441,14 @@ class MemoryModel( QAbstractTableModel ) :
             return WHITE_BRUSH
 
     '''
-    The setData method stores a byte obtained by the MemoryEdit delegate.
-    It probably is not necessary, but check the value for type and length.
+    The setData method stores a byte obtained by the MemoryEdit delegate. The
+    delegate's input mask ensures the input is 2 uppercase hex digits.
     If this function returns False, no change is made. When the update is
     successful it returns True and the table display updates.
     '''
     def setData( self, index, value, role ) :
-        hex = '0123456789ABCDEF'
-        # ensure a string ... of bloody course it's a string.
-        if not isinstance( value, str ) :
-            return False
-        # ensure uppercase and remove spaces and extraneous chars
-        value = [ c for c in value.upper() if c in hex ]
-        if 2 != len( value ) :
-            return False
-        # convert to integer
-        number = ( hex.find( value[0] ) * 16 ) + hex.find( value[1] )
+        # convert to integer from base-16 characters
+        number = int( value, 16 )
         # store in memory
         row = index.row()
         col = index.column()
