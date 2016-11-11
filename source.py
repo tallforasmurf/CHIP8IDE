@@ -113,24 +113,30 @@ from PyQt5.QtGui import (
     QBrush,
     QCloseEvent,
     QColor,
+    QKeyEvent,
     QKeySequence,
     QSyntaxHighlighter,
     QTextCharFormat,
     QTextCursor,
     QTextBlock,
-    QTextBlockUserData
+    QTextBlockUserData,
+    QTextDocument
     )
 from PyQt5.QtWidgets import (
     qApp,
     QAction,
+    QApplication,
+    QDialog,
     QFileDialog,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMainWindow,
     QMenu,
     QMenuBar,
     QMessageBox,
     QPlainTextEdit,
+    QPushButton,
     QSizePolicy,
     QTextEdit,
     QVBoxLayout,
@@ -225,6 +231,71 @@ Define some colors, quite arbitrarily.
 CURRENT_LINE_COLOR = "#FAFAE0"
 INVALID_LINE_COLOR = "#FF8090"
 BREAKPOINT_LINE_COLOR = "thistle"
+
+'''
+    Define the Find/Replace dialog.
+
+It's a basic QDialog with two text fields and four pushbuttons.
+
+The SourceEditor instantiates one copy and keeps it around. It is shown when
+the user keys ^F. But its find_text and replace_text widgets remain available
+after it has closed again, and can be used from e.g. the ^G key event.
+
+'''
+class FindDialog( QDialog ) :
+    def __init__( self, parent ) :
+        super().__init__( parent )
+
+        '''
+        Instantiate the widgets and lay them out. First the lineedits.
+        '''
+        vbox = QVBoxLayout()
+        self.find_text = QLineEdit( self )
+        vbox.addWidget( self.find_text )
+        self.replace_text = QLineEdit( self )
+        vbox.addWidget( self.replace_text )
+        '''
+        Four buttons: Find, Close, Replace, All!, in a row.
+        '''
+        self.find_button = QPushButton( '&Find' )
+        self.find_button.setDefault(True)
+        self.close_button = QPushButton( 'Close' )
+        self.repl_button = QPushButton( '&Replace' )
+        self.all_button = QPushButton( 'All!' )
+        hbox = QHBoxLayout()
+        hbox.addWidget( self.find_button )
+        hbox.addStretch(1)
+        hbox.addWidget( self.close_button )
+        hbox.addStretch(2)
+        hbox.addWidget( self.repl_button )
+        hbox.addStretch(1)
+        hbox.addWidget( self.all_button )
+        vbox.addLayout( hbox )
+        self.setLayout( vbox )
+
+        '''
+        Connect the buttons to some methods. In fact, the important methods
+        are in the parent editor, so they can be used directly from keystrokes.
+
+        The close button just calls accept, which closes the dialog (but does
+        not destroy it).
+        '''
+        self.close_button.clicked.connect( self.accept )
+        '''
+        The action buttons call into the parent. The code in those methods
+        refers via a parent member, to the find_text and replace_text fields here.
+        '''
+        self.find_button.clicked.connect( parent.find_next )
+        self.repl_button.clicked.connect( parent.replace_selection )
+        self.all_button.clicked.connect( parent.replace_all )
+        '''
+        Also connect Find to self.accept, so that hitting return does a Find
+        and also closes the dialog. It's just in the way once the find text
+        has been entered.
+        '''
+        self.find_button.clicked.connect( self.accept )
+        # that's about it
+
 '''
     Define the Editor
 
@@ -276,6 +347,23 @@ class SourceEditor( QPlainTextEdit ) :
         slot.
         '''
         connect_signal( self.show_pc_line )
+        '''
+        Initialize a dispatch table for the key event handler. Cannot do
+        static initialization of this as a class variable.
+        '''
+        self.key_dispatch = {
+            int(Qt.Key_B) | int(Qt.ControlModifier) : self.toggle_bp,
+            int(Qt.Key_E) | int(Qt.ControlModifier) : self.find_next_error_line,
+            int(Qt.Key_F) | int(Qt.ControlModifier) : self.start_find,
+            int(Qt.Key_G) | int(Qt.ControlModifier) : self.find_next,
+            int(Qt.Key_G) | int(Qt.ControlModifier) | int(Qt.ShiftModifier) : self.find_prior,
+            int(Qt.Key_Equal) | int(Qt.ControlModifier) : self.replace_selection,
+            int(Qt.Key_T) | int(Qt.ControlModifier) : self.replace_and_find
+            }
+        '''
+        Create one instance of the Find dialog and save it for use later.
+        '''
+        self.find_dialog = FindDialog(self)
 
     '''
     Upon any movement of the cursor, even by one character, this slot
@@ -382,8 +470,9 @@ class SourceEditor( QPlainTextEdit ) :
                 break
             current_block = current_block.next()
         '''
-        If that search failed (not current_block.isValid) then try again
-        starting from the first line of the document down to here.
+        If that search failed, then current_block.isValid is False (end of
+        document). Try again starting from the first line of the document
+        down to here.
         '''
         if not current_block.isValid() :
             current_block = self.document().firstBlock()
@@ -400,13 +489,221 @@ class SourceEditor( QPlainTextEdit ) :
                 '''
                 return
         '''
-        Make current_block the current cursor line (which invokes cursor_moved, above)
-        and ensure it is visible. It will not necessarily be centered. If it was already
-        visible on the screen, nothing happens.
+        Make current_block the current cursor line (which invokes
+        cursor_moved, above) and ensure it is visible. It will not
+        necessarily be centered. If it was already visible on the screen,
+        nothing happens.
         '''
         self.setTextCursor( QTextCursor( current_block ) )
         self.ensureCursorVisible()
 
+    '''
+    The following methods are dispatched from the keyPressEvent handler, below.
+    Except for replace_all which is called only from the Find dialog.
+    '''
+
+    def toggle_bp( self ) :
+        print('bp')
+
+    def find_next_error_line( self ) :
+        print('next error')
+
+    '''
+    Make the Find dialog visible. It's a modal dialog so it hogs the focus
+    until the user clicks Close or hits ESC. Then it returns a code that we
+    don't care about.
+
+    While the dialog is running, it may call into the following methods.
+    '''
+    def start_find( self ) :
+        retcode = self.find_dialog.exec_()
+
+    '''
+    This is the heart of the Find process, factored out of find_next and
+    find_prior. The only difference between them is the flag value and
+    which end of the document you go to, if you want to wrap.
+
+    This method returns True when it found a match, and False when not.
+    The only caller that cares is the replace_all method.
+    '''
+    def find_it( self, forward=True, wrap=True ) :
+        find_flag = QTextDocument.FindCaseSensitively
+        if not forward :
+            find_flag |= QTextDocument.FindBackward
+        '''
+        Execute a find starting at the current selection, self.textCursor()
+        '''
+        new_cursor = self.document().find(
+            self.find_dialog.find_text.text(),
+            self.textCursor(),
+            options=find_flag
+        )
+        if not new_cursor.hasSelection() :
+            '''
+            Search failed from the current point. If the caller wants, try it
+            again from the other end of the document.
+            '''
+            if wrap :
+                start_cursor = QTextCursor(
+                    self.document().firstBlock() if forward \
+                              else self.document().lastBlock()
+                    )
+                new_cursor = self.document().find(
+                    self.find_dialog.find_text.text(),
+                    start_cursor,
+                    options= find_flag
+                )
+            '''
+            If that didn't work, or wasn't wanted, return False.
+            '''
+            if not new_cursor.hasSelection() :
+                return False
+        '''
+        Eureka! literally. Make that the edit selection and make it visible.
+        '''
+        self.setTextCursor( new_cursor )
+        self.ensureCursorVisible()
+        return True
+
+    '''
+    This is called from the FIND button of the dialog, and from the ^g key,
+    to find the next match to the text in the find dialog.
+    '''
+    def find_next( self ) :
+        hit = self.find_it( forward= True )
+        if not hit :
+            QApplication.beep()
+
+    '''
+    This is called from the keyEvent handler for control-shift-G, to find
+    the previous match to the text entered to the find dialog.
+    '''
+    def find_prior( self ) :
+        hit = self.find_it( forward= False )
+        if not hit:
+            QApplication.beep()
+
+    '''
+    This is called from the REPLACE button of the Find dialog, and from the
+    following ^= and ^t methods. We use the contents of the Find dialog
+    Replace lineedit to replace the current selection -- which we ASSUME is
+    the result of having done a Find. But we don't check that.
+
+    It would be possible to check; define a flag that is set True on a
+    successful Find, and set False on any change of selection. It could be
+    done here but I don't think it's necessary.
+    '''
+    def replace_selection( self ) :
+        replace_text = self.find_dialog.replace_text.text()
+        self.textCursor().insertText( replace_text )
+
+    '''
+    This is called from the control-t key event. Replace the current text
+    and do a find-next.
+    '''
+    def replace_and_find( self ) :
+        self.replace_selection()
+        hit = self.find_it( forward=True)
+        if not hit :
+            QApplication.beep()
+
+    '''
+    This is called only from the ALL! button of the Find dialog. We could
+    just blindly run through the document doing find_next, replace_selection
+    until we hit the end. Which would be OK, but I prefer to add just a
+    little code and give the user a chance to back out.
+
+    We run through the document doing find_next() and making a list of
+    QTextCursors for the 0-or-more text matches. If there were 0 matches,
+    exit with a beep. If there was only 1 match, just do the replace.
+
+    When there were 2 or more matches, put up a dialog saying how many of
+    what and ask for OK or Cancel. On OK, do all in the list, in such a
+    way that a single ^z backs out all changes.
+    '''
+
+    def replace_all( self ) :
+        '''
+        Move our edit cursor to the top of the document.
+        '''
+        self.setTextCursor( QTextCursor( self.document().firstBlock() ) )
+        '''
+        Make a list of text cursors for all matches.
+        '''
+        cursor_list = []
+        while True:
+            hit = self.find_it( forward= True, wrap= False )
+            if not hit : break
+            cursor_list.append( QTextCursor( self.textCursor() ) )
+        '''
+        If no hits, beep and exit.
+        '''
+        if 0 == len( cursor_list ) :
+            QApplication.beep()
+            return
+        '''
+        If just one hit, then the current document cursor is selecting that
+        matched text. Do the replace and exit.
+        '''
+        if 1 == len( cursor_list ) :
+            self.replace_selection( )
+            return
+        '''
+        Let the user know how many changes we plan to make, of what to what.
+        '''
+        msg = '''Click YES to convert {} instances of
+{}
+to
+{}'''.format( len(cursor_list),
+              self.find_dialog.find_text.text(),
+              self.find_dialog.replace_text.text()  )
+
+        answer = QMessageBox.question(
+            self,
+            'Approve global replace',
+            msg
+            )
+        if answer == QMessageBox.Yes :
+            for cursor in cursor_list :
+                self.setTextCursor( cursor )
+                self.replace_selection( )
+
+    '''
+
+    Implement a keyPressEvent handler to capture the command keys we support,
+       * control-B to toggle breakpoint status on the current line
+       * control-E to jump to the next line with Error status
+       * control-F to open a Find dialog
+       * control-G to search forward to the next match
+       * control-shift-G to search backward to the prior match
+       * control-equals to replace
+       * control-T to replace and find again
+    '''
+    def keyPressEvent(self, event: QKeyEvent ) -> None :
+        '''
+        The only keys we handle have the control modifier.
+        '''
+        modifiers = int( event.modifiers() )
+        # uncomment this to see how many events this handles.
+        #print( '{:X} {:X} {:X}'.format(modifiers,int(event.key()),key_code) )
+        if modifiers & Qt.ControlModifier :
+            '''
+            Make sure it is one of the key+modifier combos we want.
+            '''
+            key_code = int( int( event.key() ) | modifiers )
+            if key_code in self.key_dispatch :
+                '''
+                This is an event we handle, note that. Then dispatch the
+                appropriate routine.
+                '''
+                event.accept()
+                self.key_dispatch[ key_code ]()
+                return
+        '''
+        Not one of our keys, pass it on to mamma.
+        '''
+        super().keyPressEvent(event)
+        return
 
     '''
     Create a QTextCharFormat given a color, specified as a string that
