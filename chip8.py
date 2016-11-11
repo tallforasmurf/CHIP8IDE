@@ -254,10 +254,12 @@ def bp_add( bp : int ) -> None :
     if not bp in BREAKPOINTS :
         BREAKPOINTS.append( bp )
 
-def bp_rem( bp : int ) -> None :
+def bp_rem( bp : int ) -> bool :
     global BREAKPOINTS
     if bp in BREAKPOINTS :
         BREAKPOINTS.remove( bp )
+        return True
+    return False # it wasn't there
 
 '''
 Initialize the module on first load. We get a settings object
