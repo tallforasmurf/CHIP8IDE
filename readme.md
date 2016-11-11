@@ -382,10 +382,10 @@ Display:
 Source:
 
 * Figure out what gives with cursor line on insert newline
-* Add ^E jump to next error
 * Add breakpoint toggling and display (^b)
 * Add clear-all-BP button
 * Clear all BP on Open, New
+* <strike>Add ^E jump to next error</strike>
 * <strike>Add Find/Replace dialog, ^f ^g/^G ^t ^= </strike>
 * <strike>Jump cursor to PC statement on stop (registry)</strike>
 * <strike>On open-binary set name Untitled, clear path</strike>

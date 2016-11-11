@@ -436,14 +436,12 @@ class SourceEditor( QPlainTextEdit ) :
     move the edit cursor to that line (thus highlighting it, see cursor_moved above),
     and make sure it is visible in the window.
 
-
-    * getting the QTextBlock that corresponds to that line number
-    * making a QTextCursor positioned to that line's origin
-    * setting that QTextCursor as the edit cursor
-    * telling the editor to center the cursor
-
-    Note this removes any existing selection, and also probably triggers
-    a cursorMoved signal.
+    This requires:
+    * Find the QTextBlock with a Statement containing that PC value.
+    * Make a QTextCursor positioned to that line's origin.
+    * Set that QTextCursor as the edit cursor (which incidentally
+      clears any existing selection).
+    * Tell the editor to make the cursor visible.
     '''
 
     def show_pc_line( self, PC ) :
@@ -498,15 +496,46 @@ class SourceEditor( QPlainTextEdit ) :
         self.ensureCursorVisible()
 
     '''
-    The following methods are dispatched from the keyPressEvent handler, below.
-    Except for replace_all which is called only from the Find dialog.
+    The following methods are dispatched from the keyPressEvent handler, below
+    (except for replace_all which is called only from the Find dialog).
     '''
 
     def toggle_bp( self ) :
         print('bp')
 
+    '''
+    This is called on the control-E key event. Starting from the line after
+    the current line, scan forward for a textblock in which the Statement has
+    either expr_error or text_error.
+    '''
     def find_next_error_line( self ) :
-        print('next error')
+        this_block = self.textCursor().block()
+        next_block = this_block.next()
+        while next_block.isValid() :
+            U = next_block.userData()
+            S = U.statement
+            if S.text_error or S.expr_error :
+                break
+            next_block = next_block.next()
+        if not next_block.isValid() :
+            '''
+            Try again from the top down.
+            '''
+            next_block = self.document().firstBlock()
+            while next_block != this_block :
+                U = next_block.userData()
+                S = U.statement
+                if S.text_error or S.expr_error :
+                    break
+                next_block = next_block.next()
+
+            if next_block == this_block :
+                '''
+                We found no (other) errors.
+                '''
+                QApplication.beep()
+                return
+        self.setTextCursor( QTextCursor( next_block ) )
 
     '''
     Make the Find dialog visible. It's a modal dialog so it hogs the focus
