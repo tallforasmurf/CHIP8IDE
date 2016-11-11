@@ -89,6 +89,7 @@ from disassemble import disassemble
 Import the reset_vm method of chip8, which is called by the Load button.
 '''
 from chip8 import reset_vm
+from chip8 import bp_add, bp_clear, bp_rem
 
 '''
 Import sys for .platform, and os/os.path for file ops.
@@ -496,12 +497,38 @@ class SourceEditor( QPlainTextEdit ) :
         self.ensureCursorVisible()
 
     '''
+    Clear the breakpoint status of a particular text block, if it
+    has that status. This is called from several places.
+    '''
+    def clear_bp_status( self, text_block:QTextBlock ) :
+        pass
+
+    '''
     The following methods are dispatched from the keyPressEvent handler, below
     (except for replace_all which is called only from the Find dialog).
     '''
 
+    '''
+    Toggle the breakpoint status of the current line. If it ought not
+    to be a breakpoint, or is currently a breakpoint, clear the breakpoint
+    status. If it is not now a breakpoint and can be, set that status.
+    Note this is the only place where breakpoint status is set on.
+    All other breakpoint-related methods only clear it.
+    '''
     def toggle_bp( self ) :
-        print('bp')
+        this_block = self.textCursor().block()
+        bp_state = this_block.userState()
+        U = this_block.userData()
+        S = U.statement
+        if (S.PC is not None) \
+           and (not S.text_error) \
+           and (not S.expr_error) \
+           and bp_state == -1 :
+            bp_add( S.PC )
+            extra_sel = self.make_extra_selection( BREAKPOINT_LINE_COLOR )
+            extra_sel.cursor = QTextCursor( this_block )
+            self.extra_selection_list.append( extra_sel )
+            this_block.setUserState( 1 )
 
     '''
     This is called on the control-E key event. Starting from the line after
@@ -1177,29 +1204,6 @@ class SourceWindow( QMainWindow ) :
         (prefix, filename) = os.path.split( chosen_path )
         self.set_file_name( filename, path=prefix )
         return self.file_save()
-
-    ### DBG REMOVE
-    def bazongas( self ) :
-        (chosen_path, _) = QFileDialog.getSaveFileName( self,
-                                     'Name BINARY to save',
-                                     self.windowFilePath(),
-                                     '' )
-        if 0 == len( chosen_path ) : return False
-        try :
-            bf = open( chosen_path, 'wb' )
-        except Exception as E :
-            QMessageBox.warning( self, 'Error opening file:', str(E) )
-            return False
-        from chip8 import MEMORY
-        for j in range( len(MEMORY)-1, -1, -1 ) :
-            if MEMORY[j] : break
-        try:
-            bf.write( bytes( MEMORY[ 0x200 : j+1 ] ) )
-        except Exception as E :
-            QMessageBox.warning( self, 'Error writing file:', str(E) )
-            return False
-        finally:
-            bf.close()
 
 
 
