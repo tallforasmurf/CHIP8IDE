@@ -1040,12 +1040,17 @@ class SourceWindow( QMainWindow ) :
     '''
     Set the current file name as the window title, save the file path (if
     given) as the window file path, and clear the modified flag if it is set.
+
+    This is also an opportune place to tell the emulator to clear all
+    breakpoints. This is only called when the active file is new and can
+    have no existing breakpoints.
     '''
     def set_file_name( self, name: str, path: str = None ) :
         self.document.setModified( False )
         self.setWindowModified( False )
         self.setWindowFilePath( path )
         self.setWindowTitle( name )
+        bp_clear()
 
     '''
     This method is called when File>New is selected. Empty our document of
