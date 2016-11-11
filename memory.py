@@ -469,7 +469,7 @@ class RegisterEdit( QStyledItemDelegate ) :
         col = index.column() # register number
         line_edit = QLineEdit( parent )
         line_edit.setInputMask(
-            '>HHH' if col == chip8.R.I else '>HH'
+            '>HHH' if (col == chip8.R.I or col == chip8.R.P) else '>HH'
         )
         line_edit.setFont( MONOFONT )
         return line_edit
