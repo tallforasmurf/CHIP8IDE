@@ -444,7 +444,8 @@ class MemoryModel( QAbstractTableModel ) :
     The setData method stores a byte obtained by the MemoryEdit delegate. The
     delegate's input mask ensures the input is 2 uppercase hex digits.
     If this function returns False, no change is made. When the update is
-    successful it returns True and the table display updates.
+    successful it returns True and the table display updates only the cell
+    selected by the index row/col.
     '''
     def setData( self, index, value, role ) :
         # convert to integer from base-16 characters
@@ -454,6 +455,37 @@ class MemoryModel( QAbstractTableModel ) :
         col = index.column()
         chip8.MEMORY[ ( row * MEM_TABLE_COLS) + col ] = number
         return True
+
+'''
+Define a styled item delegate for manual editing of the register display.
+See comments on MemoryEdit, above.
+'''
+class RegisterEdit( QStyledItemDelegate ) :
+    def createEditor( self, parent, style, index ):
+        '''
+        Create a QLineEdit which will permit the input of either
+        two or three uppercase hexadecimal characters.
+        '''
+        col = index.column() # register number
+        line_edit = QLineEdit( parent )
+        line_edit.setInputMask(
+            '>HHH' if col == chip8.R.I else '>HH'
+        )
+        line_edit.setFont( MONOFONT )
+        return line_edit
+
+    def setEditorData( self, line_edit, index ):
+        '''
+        Load the newly-created line edit with the byte value from the
+        selected memory cell. NB: the table index object has a convenient
+        data method that calls on the data() method of the table model, which
+        given Qt.DisplayRole conveniently returns two uppercase hex digits --
+        see MemoryModel.data() below.
+        '''
+        line_edit.setText( index.data( Qt.DisplayRole ) )
+
+    def setModelData( self, line_edit, model, index):
+        model.setData( index, line_edit.text(), Qt.DisplayRole )
 
 '''
 Define the register display as a QTableView having only a header row and one
@@ -489,6 +521,11 @@ class RegisterDisplay( QTableView ) :
         Instantiate the model and connect it to this view.
         '''
         self.setModel( RegisterModel( self ) )
+        '''
+        Allow editing
+        '''
+        self.setItemDelegate( RegisterEdit() )
+
 
 class RegisterModel( QAbstractTableModel ) :
 
@@ -559,6 +596,18 @@ class RegisterModel( QAbstractTableModel ) :
         elif role == Qt.FontRole :
             return MONOFONT
         return None
+    '''
+    The setData method stores a value obtained by the RegisterEdit delegate.
+    The delegate's input mask ensures the input is either 2 or 3 uppercase
+    hex digits. See also remarks on setData of the memory model above.
+    '''
+    def setData( self, index, value, role ) :
+        # convert to integer from base-16 characters
+        number = int( value, 16 )
+        # store in the emulator register bank
+        col = index.column()
+        chip8.REGS[ col ] = number
+        return True
 
 '''
 Define the Call Stack widget as a QListView based on a QAbstractListModel

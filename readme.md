@@ -394,7 +394,7 @@ Source:
 
 Memory:
 
-* Can't edit register table?
+* <strike>Can't edit register table? Add item delegate machinery!</strike>
 * <strike>Add registry for "stopped" callback</strike>
 * <strike>Don't update the memory table unless it has changed</strike>
 * <strike>scroll display to 0200 on reset</strike>
