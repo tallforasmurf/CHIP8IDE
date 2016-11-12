@@ -1,8 +1,12 @@
 # CHIP-8 Assembler Reference
 
 The assembler is case-insensitive. Lowercase character input is treated as uppercase.
+
 In this sheet, **bold** means a value to be
 entered exactly as shown, while *italic* means a value to be chosen by you.
+For example a register argument might be shown as
+**V***t* which means it must start with a V,
+followed by a digit of your choice indicated by *t*.
 
 ## Input rules
 
@@ -18,7 +22,7 @@ loads these lines into the editor window.
 
 Note if an assembler source file contains accented characters and symbols
 that are not in the ASCII set, it will be treated as a binary executable
-when it is opened, with hilarious results.
+when it is opened, with results that may be hilarious but will not be useful.
 
 ### Statements
 
@@ -39,6 +43,7 @@ Each statement consists of these parts, all of which are optional:
 
 Examples:
 
+    ONLY_A_LABEL:
     ; just the comment
     EXIT: ; label, comment, no opcode or operands
     SUB_START: LD v3, #FF ; all four parts
