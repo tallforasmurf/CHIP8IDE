@@ -86,10 +86,9 @@ from assembler2 import assemble
 from disassemble import disassemble
 
 '''
-Import the reset_vm method of chip8, which is called by the Load button.
+Import the chip8, the emulator, for reset_vm and breakpoint ops.
 '''
-from chip8 import reset_vm
-from chip8 import bp_add, bp_clear, bp_rem
+import chip8
 
 '''
 Import sys for .platform, and os/os.path for file ops.
@@ -497,11 +496,28 @@ class SourceEditor( QPlainTextEdit ) :
         self.ensureCursorVisible()
 
     '''
-    Clear the breakpoint status of a particular text block, if it
-    has that status. This is called from several places.
+    Clear the breakpoint status of a particular text block, if it has that
+    status. The status has to be removed from chip8, but the tricky bit is
+    getting the matching extra-selection out of the list. The extra selection
+    has a text cursor. We match this block that cursor on the basis that both
+    have the same document position value.
+
+    Note that the following code modifies a list that is controlling
+    a for-loop, ordinarily a no-no. But we immediately break the loop,
+    so it's ok.
     '''
     def clear_bp_status( self, text_block:QTextBlock ) :
-        pass
+        if text_block.userState() == 1 :
+            U = text_block.userData()
+            S = U.statement
+            chip8.bp_rem( S.PC )
+            pos = text_block.position()
+            for extra_sel in self.extra_selection_list :
+                sel_pos = extra_sel.cursor.position()
+                if sel_pos == pos and extra_sel != self.current_line_selection :
+                    self.extra_selection_list.remove( extra_sel )
+                    break
+            text_block.setUserState( -1 )
 
     '''
     The following methods are dispatched from the keyPressEvent handler, below
@@ -524,11 +540,21 @@ class SourceEditor( QPlainTextEdit ) :
            and (not S.text_error) \
            and (not S.expr_error) \
            and bp_state == -1 :
-            bp_add( S.PC )
+            chip8.bp_add( S.PC )
             extra_sel = self.make_extra_selection( BREAKPOINT_LINE_COLOR )
             extra_sel.cursor = QTextCursor( this_block )
             self.extra_selection_list.append( extra_sel )
             this_block.setUserState( 1 )
+        else :
+            '''
+            This line either has a breakpoint that the user wants to clear
+            (bp_state==1) or it is not elegible for breakpoints (because
+            S.PC is None, indicating it has not been assembled, or because
+            it has error status).
+            In all cases, clear any bp status; in the latter, beep.
+            '''
+            self.clear_bp_status( this_block )
+            if bp_state != 1 : QApplication.beep()
 
     '''
     This is called on the control-E key event. Starting from the line after
@@ -954,6 +980,7 @@ class SourceWindow( QMainWindow ) :
 
     '''
     Internal method common to both Check and Load buttons:
+
     Pass the first text block of the document to the assemble() function
     which iterates over the source, updating all the Statement objects, and
     returning a new memory load, or a count of errors found.
@@ -963,6 +990,15 @@ class SourceWindow( QMainWindow ) :
     '''
     def do_assembly( self ) -> bool :
         first_block = self.document.firstBlock()
+        '''
+        Because we are about to (re) assemble, clear all breakpoints both
+        from the emulator and from any statements that have them.
+        '''
+        next_block = first_block
+        while next_block.isValid():
+            self.editor.clear_bp_status( next_block )
+            next_block = next_block.next()
+
         mem_load = assemble( first_block )
         if mem_load[0] < 0 :
             '''
@@ -1012,7 +1048,7 @@ class SourceWindow( QMainWindow ) :
     def load_clicked( self ) :
         mem_load = self.do_assembly()
         if mem_load : # is not None,
-            reset_vm( mem_load )
+            chip8.reset_vm( mem_load )
 
     '''
     Copied from the Qt Application Example, maybe_save() is called
@@ -1046,7 +1082,7 @@ class SourceWindow( QMainWindow ) :
         self.setWindowModified( False )
         self.setWindowFilePath( path )
         self.setWindowTitle( name )
-        bp_clear()
+        chip8.bp_clear()
 
     '''
     This method is called when File>New is selected. Empty our document of
