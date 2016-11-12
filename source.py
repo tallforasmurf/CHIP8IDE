@@ -388,12 +388,12 @@ class SourceEditor( QPlainTextEdit ) :
     def cursor_moved( self ) :
         cursor = self.textCursor()
         text_block = cursor.block()
+        print( 'block#', text_block.blockNumber(),'inblock',cursor.positionInBlock(),'global',cursor.position() )
         if text_block == self.last_text_block :
             # same line, nothing to do
             return
         self.last_text_block = text_block
-        self.current_line_cursor = QTextCursor( cursor )
-        self.current_line_cursor.movePosition( text_block.position(), QTextCursor.MoveAnchor )
+        self.current_line_cursor = QTextCursor( text_block )
         self.current_line_selection.cursor = self.current_line_cursor
         self.setExtraSelections( self.extra_selection_list )
         '''
@@ -1070,15 +1070,18 @@ class SourceWindow( QMainWindow ) :
         return True
 
     '''
-    Set the current file name as the window title, save the file path (if
+    Set up a new document, either from File>Open or File>New.
+    Put the current file name as the window title; save the file path (if
     given) as the window file path, and clear the modified flag if it is set.
+    Clear a field in the editor, too.
 
     This is also an opportune place to tell the emulator to clear all
     breakpoints. This is only called when the active file is new and can
     have no existing breakpoints.
     '''
-    def set_file_name( self, name: str, path: str = None ) :
+    def set_up_new_document( self, name: str, path: str = None ) :
         self.document.setModified( False )
+        self.editor.last_text_block = None
         self.setWindowModified( False )
         self.setWindowFilePath( path )
         self.setWindowTitle( name )
@@ -1094,7 +1097,7 @@ class SourceWindow( QMainWindow ) :
     def file_new( self ) :
         if self.maybe_save( "File>New" ) :
             self.document.clear()
-            self.set_file_name( "Untitled" )
+            self.set_up_new_document( "Untitled" )
 
     '''
     This method is called when File>Open is selected. Show the user
@@ -1168,7 +1171,7 @@ class SourceWindow( QMainWindow ) :
             File>Save onto this file after editing.
             '''
             (prefix, filename) = os.path.split( chosen_path )
-            self.set_file_name( filename, path=prefix )
+            self.set_up_new_document( filename, path=prefix )
 
         except Exception as E:
             '''
@@ -1177,7 +1180,7 @@ class SourceWindow( QMainWindow ) :
             the source. So force it to an equivalent of New.
             '''
             source_string = disassemble( byte_string )
-            self.set_file_name( "Untitled" )
+            self.set_up_new_document( "Untitled" )
             self.document.setModified( True )
 
         '''
@@ -1239,7 +1242,7 @@ class SourceWindow( QMainWindow ) :
         if 0 == len( chosen_path ) :
             return False
         (prefix, filename) = os.path.split( chosen_path )
-        self.set_file_name( filename, path=prefix )
+        self.set_up_new_document( filename, path=prefix )
         return self.file_save()
 
 
