@@ -576,7 +576,9 @@ class RegisterModel( QAbstractTableModel ) :
         row = index.row()
         col = index.column()
         if role == Qt.DisplayRole :
-            pattern = '{0:02X}' if col < R.P else '{0:04X}'
+            pattern = '{0:02X}'
+            if col == R.P or col == R.I :
+                pattern = '{0:03X}'
             return pattern.format( chip8.REGS [ col ] )
         elif role == Qt.ToolTipRole :
             return 'register {}'.format( self.headers[ col ] )
