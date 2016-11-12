@@ -89,8 +89,9 @@ import regex
 
 '''
 List of Directive opcodes. A search for these is the first item in the
-tokenizer regex. It is important that they be first so that the ORG directive
-is recognized ahead of the search for the OR opcode.
+tokenizer regex. It was important that they be first so that the ORG directive
+would be recognized ahead of the search for the OR opcode -- however that
+is no longer an issue since the insertion of the \b markers.
 '''
 
 directives = [
@@ -105,8 +106,7 @@ directives = [
 
 '''
 List of instruction opcodes. The search for the names in this list is the
-second item in the tokenizer regex. The more specific names must come ahead
-of the more general, e.g. LDC must precede LD, SUBN must precede SUB.
+second item in the tokenizer regex.
 '''
 
 opcodes = [
@@ -146,7 +146,7 @@ opcodes = [
 List of V-reg names. The search for these is third in the tokenizer.
 '''
 
-v_regs = [ 'v'+c for c in '0123456789ABCDEF' ]
+v_regs = [ r'\bv'+c+r'\b' for c in '0123456789ABCDEF' ]
 
 '''
 
@@ -164,7 +164,7 @@ back together.
 '''
 
 token_specs = [
-    ( 'LABEL',     r'^\s*[A-Z0-9_]+\s*\:'        ), # Word: anchored to ^ is a label
+    ( 'LABEL',     r'^\s*[A-Z0-9_]+\s*\:' ), # Word: anchored to ^ is a label
     ( 'WHITE',     '\s+'                  ), # ignored whitespace
     ( 'DIRECTIVE', '|'.join( directives ) ), # directives
     ( 'OPCODE',    '|'.join( opcodes )    ), # known opcodes
@@ -228,7 +228,8 @@ single letters in the following table. Any token that could be part of an
 expression is represented as 'V'. (The actual validity of an expression is
 determined in a separate step.)
 
-Thus the signature for "ld v5,31" is "LDR,V".
+Thus the signature for "ld v5,31" is "LDR,V" (opcode LD, R for the register,
+comma for the comma, V for the decimal token).
 
 '''
 
@@ -250,9 +251,10 @@ summary_chars = {
 
 '''
 
-Quite a few of the resulting signatures are simple literals with no varying
-parts. For quick recognition these are filed in this dict. The key is the
-signature string; and the value, a code for the instruction format.
+Among the resulting signatures, any that do not end with an expression are
+simple literals with no varying parts. For quick recognition these are filed
+in this dict. The key is the signature string; and the value, a code for the
+instruction format.
 
 '''
 signature_dict = {
@@ -289,8 +291,8 @@ signature_dict = {
     }
 
 '''
-The remaining possible signatures have varying parts, mostly expression
-tokens. We use regexes to recognize these.
+The remaining possible signatures end in varying amounts of expression
+values. We use regexes to recognize these.
 
 Constructed similarly to the token regex above, this regex recognizes only
 valid signatures. The name of a match is a code for that instruction format.
@@ -333,8 +335,9 @@ Expressions are translated into Python expressions. Each WORD token is
 translated into a call on LOOKUP(word).
 
 The name LOOKUP is resolved as a global at the time the eval() function is
-applied. When that is done in the namespace of this module, LOOKUP()
-is the following, which just returns a zero.
+applied. When that is done in the namespace of this module, LOOKUP() is the
+following, which just returns a one (to avoid unintentional divide-by-zero
+errors).
 
 During the real assembly (in the assembler2 module), LOOKUP is defined
 to return the value of a name, or None if the name is not defined.
@@ -865,5 +868,5 @@ if __name__ == '__main__' :
     #for stmt in bad_statements :
         #phase_one( stmt, S )
         #print_S( stmt, S )
-    phase_one( '  ADD V1, VA', S )
+    phase_one( '  LD V7,07', S )
     print_S( '  ADD V1, VA', S )
