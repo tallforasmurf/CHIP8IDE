@@ -355,57 +355,5 @@ framework. The unit tests are just hacked in. So sue me.
 
 ## >>>CURRENT STATUS<<<
 
-* Emulator module substantially complete.
-* Memory module substantially complete (see below)
-* Source module mostly complete (see below)
-* Lexical scan and error display complete
-* Assembler substantially complete
-* Disassembler complete
-* Display shows the emulated screen
-
-TODO: 
-
-All modules:
-
-* add logging
-* complete type annotations and run checker
-
-Display:
-
-*   Implement sound
-* Add "latch" mode -- control-click? -- to buttons so they will stay
-  selected until they are read -- to work with step mode
-*   <strike>Code and test keypad</strike>
-*   <strike>Design and test keypad/keyboard assignments</strike>
-*   <strike>Implement remaining display instructions (scroll, etc)</strike>
-
-Source:
-
-* Figure out what gives with cursor line on insert newline
-* Add breakpoint toggling and display (^b)
-* Add clear-all-BP button
-* Clear all BP on Open, New
-* <strike>Add ^E jump to next error</strike>
-* <strike>Add Find/Replace dialog, ^f ^g/^G ^t ^= </strike>
-* <strike>Jump cursor to PC statement on stop (registry)</strike>
-* <strike>On open-binary set name Untitled, clear path</strike>
-* <strike>treat tab as 4spaces not 8?</strike>
-* <strike>Display assembled value, when known, in status line</strike>
-
-Memory:
-
-* <strike>Can't edit register table? Add item delegate machinery!</strike>
-* <strike>Add registry for "stopped" callback</strike>
-* <strike>Don't update the memory table unless it has changed</strike>
-* <strike>scroll display to 0200 on reset</strike>
-* <strike>Highlight current inst. whenever stopped</strike>
-
-Assembler:
-
-* <strike>Add assembled PC to Statement object</strike>
-* <strike>Add assembled value to Statement object</strike>
-
-Emulator:
-* <strike>Export a flag set by the STD and STM instructions</strike>
-* <strike>update both tables on any stop</strike>
-* <strike>execution not cleared on LOAD button?</strike>
+All modules are code-complete except for TODO items and bugs
+listed in the [github repo](https://github.com/tallforasmurf/CHIP8IDE).
