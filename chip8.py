@@ -771,9 +771,9 @@ be executed again. Only if a key is pressed do we return the normal PC+2.
 def do_wait_key( INST: int, PC: int ) -> int :
     global REGS
 
-    key = display.key_test()
+    key = display.key_read()
     if key < 0 : # no key pressed,
-        return PC # ..try again
+        return PC # ..retry this instruction
 
     REGS[ ( INST & 0x0F00 ) >> 8 ] = key
     return PC+2 # ok to carry on

@@ -376,10 +376,16 @@ class KeyPadButton( QToolButton ) :
         self.code = code
         self.letter = '{:1X}'.format( code )
         self.setText( self.letter )
+        self.latched = False
         spolicy = QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
         spolicy.setHorizontalStretch( 1 )
         spolicy.setVerticalStretch( 1 )
         self.setSizePolicy( spolicy )
+
+    def mousePressEvent( self, event ) :
+        self.latched = int(Qt.ShiftModifier) == int( event.modifiers() )
+        super().mousePressEvent( event )
+
     '''
     Handle a keyboard keystroke mapped to this button.
     Set our "down" status true. This changes the background color so you
@@ -390,6 +396,7 @@ class KeyPadButton( QToolButton ) :
     '''
     def keyboard_down( self ) :
         self.setDown( True )
+        self.latched = False
         self.pressed.emit()
         QTimer.singleShot( 50, self.keyboard_up )
     '''
@@ -415,9 +422,17 @@ class KeyPad( QWidget ) :
     def __init__(self, parent=None) :
         super().__init__( parent )
         '''
-        Variable records the currently-down button or -1
+        This variable records the currently-down button value, or -1.
+        This is what is polled by the key_test() function called by
+        the Emulator.
         '''
-        self.pressed_button = -1
+        self.pressed_code = -1
+        '''
+        This variable records whether the button was shift-clicked to latch
+        it down. If so we keep a reference to the button for use later.
+        '''
+        self.latched_code = False
+        self.latched_button = None # type KeyPadButton
         '''
         List the 16 buttons in order so they can be called individually.
         '''
@@ -449,21 +464,39 @@ class KeyPad( QWidget ) :
         '''
         This slot receives the pressed signal from any of the 16 buttons.
         Note which one, so when the emulator queries the keypad we can reply.
+        Also note if it was shift-clicked to latch it, in which case we
+        ignore button_up status.
 
         This uses the QObject.sender() method to return a reference to the
         object (which we are sure is a KeyPadButton) that initiated the
         signal.
         '''
         that_button = self.sender()
-        self.pressed_button = that_button.code
+        self.pressed_code = that_button.code
+        if that_button.latched :
+            self.latched_code = True
+            self.latched_button = that_button
 
     def button_up( self ) :
         '''
         This slot receives the released signal from any of the 16 buttons.
-        We don't care which one is released. We just set -1 in our
-        pressed_button variable.
+        If the key was not latched, then just set -1 as our current value.
+
+        When the key was latched, do not clear our value, and access the
+        button and set its "down" status so it stays visibly down.
         '''
-        self.pressed_button = -1
+        if not self.latched_code :
+            self.pressed_code = -1
+        else :
+            self.latched_button.setDown( True )
+
+    def clear_latch( self ) :
+        '''
+        Clear any latched button state -- called on a keypad read inst.
+        '''
+        if self.latched_code :
+            self.latched_button.setDown( False )
+            self.latched_code = False
 
     def keyboard_hit ( self, button ) :
         '''
@@ -473,7 +506,8 @@ class KeyPad( QWidget ) :
         timer used by the KeyPadButton class has expired) just ignore it.
         Otherwise, pass it on to the button concerned.
         '''
-        if self.pressed_button == -1 :
+        if self.pressed_code == -1 :
+            self.latched_code = False
             that_button = self.buttons[ button ]
             that_button.keyboard_down()
 
@@ -877,13 +911,24 @@ def sound( on : bool ) -> None :
     pass
 
 '''
-
 Return the value of a key that is currently pressed, if any; else return
--1. The caller compares a test key value in 0..15 to the returned value.
+-1. This method is called for the key-testing instructions, SKE and SKNE.
+It does not clear a latched key status.
 '''
 
 def key_test(  ) -> int :
-    return KEYPAD.pressed_button
+    return KEYPAD.pressed_code
+
+'''
+Return the value of a key that is currently pressed, if any; else return
+-1. this method is called for the LD Vt, K instruction and it does clear
+a latched value if there is one.
+'''
+
+def key_read( ) -> int :
+    key_code = KEYPAD.pressed_code
+    KEYPAD.clear_latch()
+    return key_code
 
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
@@ -900,4 +945,6 @@ if __name__ == '__main__' :
     OUR_WINDOW.show()
     sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
     draw_sprite( 16, 8, sprite )
+
+    key_read()
     the_app.exec_()
