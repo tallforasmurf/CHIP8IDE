@@ -497,6 +497,7 @@ class KeyPad( QWidget ) :
         if self.latched_code :
             self.latched_button.setDown( False )
             self.latched_code = False
+            self.pressed_code = -1
 
     def keyboard_hit ( self, button ) :
         '''
