@@ -388,7 +388,6 @@ class SourceEditor( QPlainTextEdit ) :
     def cursor_moved( self ) :
         cursor = self.textCursor()
         text_block = cursor.block()
-        print( 'block#', text_block.blockNumber(),'inblock',cursor.positionInBlock(),'global',cursor.position() )
         if text_block == self.last_text_block :
             # same line, nothing to do
             return
