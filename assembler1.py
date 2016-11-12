@@ -644,9 +644,11 @@ def phase_one( statement_text: str, S : Statement ) :
     expression text. Use the built-in compile() function to parse and convert
     that to a code-object that can be evaluated later.
 
-    Literals need only a cosmetic brush-up, except for string literals, which
-    are uppercased and converted to a call on bytes(,encoding=ASCII) which
-    could fail at assembly time, causing a diagnostic.
+    Literals need only a cosmetic brush-up except two cases: string literals,
+    need to be uppercased and converted to bytes('string',encoding=ASCII).
+    Decimal literals need to be checked for the peculiar problem that Python
+    3 does not allow a leading zero on a literal because that would have been
+    an octal literal under Python 2. So get rid of leading zeros on decimals.
 
     Names are converted into calls on the LOOKUP() function. The one in this
     module returns 1 for any name, so a compiled expression can be evaluated
@@ -663,8 +665,8 @@ def phase_one( statement_text: str, S : Statement ) :
 
         for token in token_list :
             if token.t_type == 'DECIMAL' :
-                # Decimals work as they are.
-                python_expression.append( token.t_value )
+                # Decimals are fine except for avoiding a leading 0
+                python_expression.append( token.t_value.lstrip('0') )
             elif token.t_type == 'HEX' :
                 # #0f -> 0x0f
                 python_expression.append( '0x0' + token.t_value[1:] )
@@ -868,5 +870,6 @@ if __name__ == '__main__' :
     #for stmt in bad_statements :
         #phase_one( stmt, S )
         #print_S( stmt, S )
-    phase_one( '  LD V7,07', S )
-    print_S( '  ADD V1, VA', S )
+    stmt = '  LD V7,07'
+    phase_one( stmt, S )
+    print_S( stmt, S )
