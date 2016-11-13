@@ -890,17 +890,34 @@ def scroll_right( ) -> None :
 Turn the emulated beeper/tone on or off.
 
 The tone is implemented with a QSoundEffect object primed with a 4.25 second,
-330Hz, square wave tone. 4.25 seconds is the maximum time the CHIP-8 can play.
-The Sound Timer is an 8-byte quantity that ticks down at 60/sec; 256/60 = 4.25.
+330Hz, square wave tone.
 
-The emulator calls sound(True) when the ST reg is loaded, and calls sound(False)
-when the ST reg goes to zero, or the emulator stops for some reason.
+The emulator calls sound(True) when the ST reg is loaded, and calls
+sound(False) when the ST reg goes to zero or the emulator stops for some
+reason.
+
+It might seem logical to use SFX.play()/SFX.stop() for this. However, the
+sound() function is usually called from a separate thread, the RunThread in
+memory.py. When that thread calls SFX.play(), we get an error message about
+"cannot create child from another thread" -- it seems that the play() method
+creates an object.
+
+So the present solution is to call SFX.play() in initialize() and immediately
+call setMuted(True). So the sound is playing all the time, but muted. Then
+this function calls setMuted(False) to reveal the existing sound and
+setMuted(True) to stifle it. The setMuted() call is apparently thread-safe.
+
+The disadvantage is that there is a slight break in the sound each time it
+starts a new loop. The current sound file is 4.25 seconds long, so the break
+doesn't usually occur within the window of a short beep -- although it will
+occasionally. If it is a problem, one possible solution is to use a much
+longer .wav sample to make the resource file audio330hz.py.
 '''
 
 def sound( on : bool ) -> None :
     global SFX
-    if on : SFX.play()
-    else : SFX.stop()
+    if on : SFX.setMuted( False )
+    else : SFX.setMuted( True )
 
 '''
 Return the value of a key that is currently pressed, if any; else return
@@ -954,30 +971,46 @@ def initialize( settings: QSettings ) -> None :
     Create the QSoundEffect used to make the tone that is toggled by the
     sound() method.
     '''
-    SFX = QSoundEffect( OUR_WINDOW )
-    SFX.setSource( QUrl( 'file:/330HzSQARE.wav' ) )
-    SFX.setLoopCount( 0 )
+    SFX = QSoundEffect( None )
+    SFX.setSource( QUrl( 'qrc:/330HzSQARE.wav' ) )
+    SFX.setLoopCount( QSoundEffect.Infinite )
+    SFX.play()
+    SFX.setMuted( True )
 
     '''
     Display our window
     '''
     OUR_WINDOW.show()
 
+
+
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
 # Enter the wonderful world of unit test...
 #
+
 
 if __name__ == '__main__' :
     from PyQt5.QtWidgets import QApplication
     args = []
     the_app = QApplication( args )
     settings = QSettings()
-    #settings.clear()
+    ##settings.clear()
     initialize(settings)
     OUR_WINDOW.show()
     sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
     draw_sprite( 16, 8, sprite )
-
-    #key_read()
     the_app.exec_()
+
+    #url = QUrl( 'qrc:/330HzSQARE.wav' )
+    #print('url',url.isValid() )
+    #sfx = QSoundEffect( )
+    #sfx.setSource( url )
+    #sfx.setLoopCount( QSoundEffect.Infinite )
+    #print('status',sfx.status())
+    #print('loaded',sfx.isLoaded() )
+    #print('vol',sfx.volume())
+    #from PyQt5.QtTest import QTest
+    #sfx.play()
+    #QTest.qWait(1000)
+    #sfx.stop()
