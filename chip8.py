@@ -790,7 +790,8 @@ def do_load_timer( INST: int, PC: int ) -> int :
 '''
 F018, LD ST, vx
 If we are setting the sound timer to a nonzero value we need
-also to start the tone going, and if to zero, stop it.
+also to start the tone going, and if to zero, stop it. If we start
+the sound now, it will be turned off in the tick() routine.
 '''
 def do_set_tone( INST: int, PC: int ) -> int :
     global REGS
@@ -1070,7 +1071,9 @@ Execute one emulated machine instruction at the current PC.
    Return a message string in case of an error or breakpoint.
 
 This method is called from the Memory module to implement the Run and Stop
-buttons.
+buttons. Note that it is up to the Memory module to turn the sound tone
+on if necessary when it begins a run, and off when one ends.
+
 '''
 
 def step( ) -> str :
