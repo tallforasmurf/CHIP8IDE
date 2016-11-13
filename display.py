@@ -81,6 +81,13 @@ __all__ = [
 from typing import List, Tuple
 
 '''
+Import the audio resource file, which was created from a .wav file
+using pyrcc5.
+'''
+
+import audio330hz
+
+'''
 Import needed PyQt classes.
 '''
 
@@ -89,7 +96,8 @@ from PyQt5.QtCore import (
     QPoint,
     QSize,
     QRect,
-    QTimer
+    QTimer,
+    QUrl
     )
 
 from PyQt5.QtGui import (
@@ -115,6 +123,8 @@ from PyQt5.QtWidgets import (
     QToolButton,
     QWidget
     )
+
+from PyQt5.QtMultimedia import QSoundEffect
 
 '''
 
@@ -750,34 +760,6 @@ class DisplayWindow( QWidget ) :
         super().closeEvent( event ) # pass it along
 
 '''
-Receive the settings object and save it in a global for shutdown time. Create
-the Display window.
-'''
-
-from PyQt5.QtCore import QSettings
-
-OUR_WINDOW = None # type: QWidget
-SCREEN = None # type: Screen
-KEYPAD = None # type: Keypad
-
-def initialize( settings: QSettings ) -> None :
-    global OUR_WINDOW, SCREEN, KEYPAD
-    '''
-    Create the window and everything in it.
-    Pass the settings object for its use.
-    '''
-    OUR_WINDOW = DisplayWindow( settings )
-    '''
-    Set up for quick access to screen and keypad
-    '''
-    SCREEN = OUR_WINDOW.screen
-    KEYPAD = OUR_WINDOW.keypad
-    '''
-    Display our window
-    '''
-    OUR_WINDOW.show()
-
-'''
 Set the mode of the emulated screen to CHIP-8 (32x64) or SCHIP (64x128) mode.
 The screen is also cleared by this.
 '''
@@ -906,10 +888,19 @@ def scroll_right( ) -> None :
 
 '''
 Turn the emulated beeper/tone on or off.
+
+The tone is implemented with a QSoundEffect object primed with a 4.25 second,
+330Hz, square wave tone. 4.25 seconds is the maximum time the CHIP-8 can play.
+The Sound Timer is an 8-byte quantity that ticks down at 60/sec; 256/60 = 4.25.
+
+The emulator calls sound(True) when the ST reg is loaded, and calls sound(False)
+when the ST reg goes to zero, or the emulator stops for some reason.
 '''
 
 def sound( on : bool ) -> None :
-    pass
+    global SFX
+    if on : SFX.play()
+    else : SFX.stop()
 
 '''
 Return the value of a key that is currently pressed, if any; else return
@@ -931,6 +922,47 @@ def key_read( ) -> int :
     KEYPAD.clear_latch()
     return key_code
 
+'''
+    INITIALIZATION
+
+Receive the settings object and save it in a global for shutdown time.
+Create the Display window including the screen and keypad.
+Create the QSoundEffect object.
+
+'''
+
+from PyQt5.QtCore import QSettings
+
+OUR_WINDOW = None # type: QWidget
+SCREEN = None # type: Screen
+KEYPAD = None # type: Keypad
+SFX = None # type: QSoundEffect
+
+def initialize( settings: QSettings ) -> None :
+    global OUR_WINDOW, SCREEN, KEYPAD, SFX
+    '''
+    Create the window and everything in it.
+    Pass the settings object for its use.
+    '''
+    OUR_WINDOW = DisplayWindow( settings )
+    '''
+    Set up for quick access to screen and keypad
+    '''
+    SCREEN = OUR_WINDOW.screen
+    KEYPAD = OUR_WINDOW.keypad
+    '''
+    Create the QSoundEffect used to make the tone that is toggled by the
+    sound() method.
+    '''
+    SFX = QSoundEffect( OUR_WINDOW )
+    SFX.setSource( QUrl( 'file:/330HzSQARE.wav' ) )
+    SFX.setLoopCount( 0 )
+
+    '''
+    Display our window
+    '''
+    OUR_WINDOW.show()
+
 # -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #
 # Enter the wonderful world of unit test...
@@ -947,5 +979,5 @@ if __name__ == '__main__' :
     sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
     draw_sprite( 16, 8, sprite )
 
-    key_read()
+    #key_read()
     the_app.exec_()
