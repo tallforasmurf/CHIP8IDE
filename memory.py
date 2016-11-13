@@ -85,10 +85,11 @@ __all__ = [ 'initialize', 'MONOFONT', 'MONOFONT_METRICS', 'RSSButton', 'connect_
 
 '''
 Import the memory, registers and call stack from the display module.
+Import the display module just so we can call display.sound().
 '''
 
 import chip8
-
+import display
 from chip8 import R, reset_vm, MEMORY_CHANGED
 
 '''
@@ -1058,8 +1059,11 @@ class RunThread( QThread ) :
             self.wait_for_click.wait( self.mutex )
             '''
             Yawn. Stretch. OK, set up to enter the loop.
+            If the emulated sound is supposed to be going, restart it.
             Initialize a counter. Start the timer going.
             '''
+            if chip8.REGS[ chip8.R.S ] :
+                display.sound( on=True )
             tick_limit = INST_PER_TICK.value()
             inst_count = 0
             burn_count = 0 # DBG
@@ -1108,8 +1112,9 @@ class RunThread( QThread ) :
                     burn_count += 1 #DBG
             '''
             Either the RUN/STOP switch was clicked, or the emulator returned
-            an error.
+            an error. If the emulated tone is sounding, stop it.
             '''
+            display.sound( on=False )
             if self.message_text is None :
                 '''
                 We stopped because the Run/Stop button changed state.
