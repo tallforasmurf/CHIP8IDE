@@ -901,6 +901,7 @@ class MasterWindow( QWidget ) :
             '''
             RUN_STOP_BUTTON.setText( RUN_STOP_BUTTON.on_text )
             self.begin_resets()
+            STATUS_LINE.clear()
             OUR_THREAD.wake_up()
 
         else :
