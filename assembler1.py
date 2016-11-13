@@ -665,8 +665,10 @@ def phase_one( statement_text: str, S : Statement ) :
 
         for token in token_list :
             if token.t_type == 'DECIMAL' :
-                # Decimals are fine except for avoiding a leading 0
-                python_expression.append( token.t_value.lstrip('0') )
+                # Decimals are fine except for avoiding a leading 0. However,
+                # lstrip can get carried away...
+                nonzero_decimal = token.t_value.lstrip('0')
+                python_expression.append( nonzero_decimal if len(nonzero_decimal) else '0' )
             elif token.t_type == 'HEX' :
                 # #0f -> 0x0f
                 python_expression.append( '0x0' + token.t_value[1:] )
