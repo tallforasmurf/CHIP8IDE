@@ -458,15 +458,20 @@ class KeyPad( QWidget ) :
             grid.setColumnMinimumWidth( n, min_size )
             grid.setRowMinimumHeight( n, min_size )
         '''
-        Create the buttons and lay them out.
+        Create the buttons and lay them out. They are NOT in numerical
+        order (doh!) but are laid out:
         '''
-        for code in range(16) :
-            kp_button = KeyPadButton( code )
+        key_code= [ 1, 2, 3, 12,
+                    4, 5, 6, 13,
+                    7, 8, 9, 14,
+                    10,0,11, 15 ]
+        for kp_index in range(16) :
+            kp_button = KeyPadButton( key_code[ kp_index ] )
             self.buttons.append( kp_button )
             grid.addWidget(
                 kp_button,
-                code // 4,
-                code % 4 )
+                kp_index // 4,
+                kp_index % 4 )
             kp_button.pressed.connect( self.button_down )
             kp_button.released.connect( self.button_up )
 
