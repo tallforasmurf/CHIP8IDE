@@ -926,6 +926,8 @@ class MasterWindow( QWidget ) :
     When the vm is reset, make all the tables update.
     '''
     def reset_display( self ) :
+        global MEMORY_CHANGED
+        MEMORY_CHANGED = True
         self.begin_resets()
         self.end_resets()
 
