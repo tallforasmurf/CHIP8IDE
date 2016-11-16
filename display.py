@@ -402,20 +402,19 @@ class KeyPadButton( QToolButton ) :
     see the button was triggered. It does not send our pressed signal, so
     generate that manually.
 
-    Start a 50ms one-shot timer that will call key_up below.
+    Start a one-shot timer that will call key_up below.
     '''
-    def keyboard_down( self ) :
+    def keyboard_press( self ) :
         self.setDown( True )
         self.latched = False
         self.pressed.emit()
-        QTimer.singleShot( 50, self.keyboard_up )
     '''
     On receipt of the timer kick, set our Down status off and emit our
     released signal.
     '''
-    def keyboard_up( self ) :
-        self.released.emit()
+    def keyboard_release( self ) :
         self.setDown( False )
+        self.released.emit()
 
 '''
 
@@ -512,11 +511,11 @@ class KeyPad( QWidget ) :
         if self.latched_code :
             self.latched_button.setDown( False )
             self.latched_code = False
-        self.pressed_code = -1
+            self.pressed_code = -1
 
-    def keyboard_hit ( self, button ) :
+    def keyboard_press ( self, button ) :
         '''
-        DisplayWindow calls here when the user hits a keyboard key that is
+        DisplayWindow calls here when the user presses a keyboard key that is
         mapped to a keypad button. If a key is already down (due to mouse
         action, or due to the user hitting a second key before the oneshot
         timer used by the KeyPadButton class has expired) just ignore it.
@@ -525,7 +524,16 @@ class KeyPad( QWidget ) :
         if self.pressed_code == -1 :
             self.latched_code = False
             that_button = self.buttons[ button ]
-            that_button.keyboard_down()
+            that_button.keyboard_press()
+    def keyboard_release( self, button ) :
+        '''
+        DisplayWindow calls here when the user releases a keyboard key that is
+        mapped to a keypad button. If the key released is not for a button that
+        is currently down, just ignore it. Otherwise, tell the button.
+        '''
+        that_button = self.buttons[ button ]
+        if self.pressed_code == that_button.code :
+            that_button.keyboard_release()
 
 '''
 Define a custom combo-box widget which presents the user a choice of
@@ -751,8 +759,20 @@ class DisplayWindow( QWidget ) :
         index = self.key_mapper.current_map.find( key )
         if index != -1 :
             event.accept() # yes, we handle this event
-            self.keypad.keyboard_hit( index )
-
+            self.keypad.keyboard_press( index )
+        else :
+            super().keyPressEvent( event )
+    '''
+    KeyReleaseEvent
+    '''
+    def keyReleaseEvent( self, event) :
+        key = event.text()
+        index = self.key_mapper.current_map.find( key )
+        if index != -1 :
+            event.accept() # yes, we handle this event
+            self.keypad.keyboard_release( index )
+        else :
+            super().keyReleaseEvent( event )
 
     '''
     Override the built-in closeEvent() method to save our geometry and key
@@ -857,7 +877,7 @@ def draw_sprite( x: int, y:int, sprite_bytes: List[int] ) -> bool :
     Paint the white pixels we found and exit.
     '''
     hit = SCREEN.paint_pixel_list( pixel_list )
-    QTest.qWait(10)
+    #QTest.qWait(10)
     return hit
 
 '''
