@@ -216,7 +216,7 @@ STEP_BUTTON = None # type RSSButton
 
 '''
 Define the Instructions/tick widget as a QSpinbox (numeric entry widget)
-with a minimum of 10, max of 1000 and steps of 10. One of these
+with a minimum of 1, max of 5000 and steps of 1. One of these
 will be instantiated when we initialize().
 
 A reference to it is stored in INST_PER_TICK for easy access.
@@ -228,10 +228,10 @@ The start value is taken from saved settings.
 class InstPerTick( QSpinBox ) :
     def __init__( self, start_value:int ) :
         super().__init__( None )
-        self.setMinimum( 10 )
-        self.setMaximum( 1000 )
+        self.setMinimum( 1 )
+        self.setMaximum( 500 )
         self.setValue( start_value )
-        self.setSingleStep( 10 )
+        self.setSingleStep( 1 )
 
 INST_PER_TICK = None # type InstPerTick
 
