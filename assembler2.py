@@ -206,12 +206,12 @@ def directive_dw( S:  Statement ) -> List[int] :
     '''
     phase_one collects the zero or more expressions in S.expressions. Use
     check_value() to make sure they are all valid. Allow them to range
-    -32K..+32K. We cannot be certain they will be used as addresses (and the
+    0..65535. We cannot be certain they will be used as addresses (and the
     emulator will barf on an address out of range anyway).
     '''
     byte_list = []
     for code_object in S.expressions :
-        word = check_value( code_object, -32767, +32767 )
+        word = check_value( code_object, 0, 65535 )
         byte_list.append( word >> 8 )
         byte_list.append( word & 0xFF )
     return byte_list
@@ -449,7 +449,7 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
                         save it to try again later. Any other failure, quit.
                         '''
                         try :
-                            value = check_value( S.expressions[0], -32767, +32767 )
+                            value = check_value( S.expressions[0], 0, 65535 )
                             SYMBOLS[ S.defined_name ] = value
                         except IndexError as I :
                             list_of_deferred_equates.append( this_block )
@@ -523,7 +523,7 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
             U = this_block.userData()
             S = U.statement
             try :
-                value = check_value( S.expressions[0], -32767, +32767 )
+                value = check_value( S.expressions[0], 0, 65535 )
                 SYMBOLS[ S.defined_name ] = value
             except Exception as E :
                 S.expr_error = True
