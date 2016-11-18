@@ -1045,6 +1045,7 @@ class SourceWindow( QMainWindow ) :
             QMessageBox.warning( self, title, msg )
             self.highlighter.rehighlight()
             return None
+        self.highlighter.rehighlight()
         self.clean_assembly = True
         return mem_load
 
