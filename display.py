@@ -757,7 +757,7 @@ class DisplayWindow( QWidget ) :
     def keyPressEvent(self, event):
         key = event.text()
         index = self.key_mapper.current_map.find( key )
-        if index != -1 :
+        if (key) and index != -1 :
             event.accept() # yes, we handle this event
             self.keypad.keyboard_press( index )
         else :
