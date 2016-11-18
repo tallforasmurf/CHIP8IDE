@@ -478,12 +478,15 @@ def phase_one( statement_text: str, S : Statement ) :
     '''
     if len(tokens) and tokens[0].t_type == 'LABEL' :
             '''
-            Normal label: Store the name in S.defined_name (minus the colon
-            that was included in the match, and uppercased). Leave
-            S.defined_value at None, it is set during assembler2. Then
-            discard the label token.
+            Normal label: Extract the name from the match. The match includes \s*
+            before and after the word, and the colon that ends it. So take off the
+            colon and strip any leading and trailing spaces, and uppercase it.
             '''
-            S.defined_name = tokens[0].t_value[:-1].upper()
+            S.defined_name = tokens[0].t_value[:-1].strip().upper()
+            '''
+            That "implements" the label (S.defined_value will be filled in
+            during assembler2 time). Discard the label token.
+            '''
             tokens = tokens[1:]
     elif len(tokens) >= 3 \
          and tokens[0].t_type == 'WORD' \
