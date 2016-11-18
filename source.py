@@ -1063,7 +1063,7 @@ class SourceWindow( QMainWindow ) :
     '''
     def load_clicked( self ) :
         mem_load = self.do_assembly()
-        if mem_load : # is not None,
+        if mem_load is not None :
             chip8.reset_vm( mem_load )
 
     '''
