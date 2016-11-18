@@ -366,6 +366,16 @@ class SourceEditor( QPlainTextEdit ) :
         self.find_dialog = FindDialog(self)
 
     '''
+    For the convenience of the File>New, wipe out any possible extra
+    selections for breakpoints. Note this should only be called if it
+    is known that there are no textblocks with breakpoint status (i.e.
+    following a document.clear().
+    '''
+    def clear_all_bps( self ) :
+        self.extra_selection_list = [ self.current_line_selection ]
+        self.setExtraSelections( self.extra_selection_list )
+
+    '''
     Upon any movement of the cursor, even by one character, this slot
     is entered. (So, it behooveth us to be snappy!).
 
@@ -1090,6 +1100,7 @@ class SourceWindow( QMainWindow ) :
         self.setWindowModified( False )
         self.setWindowFilePath( path )
         self.setWindowTitle( name )
+        self.editor.clear_all_bps()
         chip8.bp_clear()
 
     '''
