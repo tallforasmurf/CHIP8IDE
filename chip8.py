@@ -168,6 +168,7 @@ Reset the virtual machine to starting condition:
 * PC set to 0x0200
 * Display set to CHIP-8 mode
 * Sound turned off
+* Latched keypad key unlatched
 * Memory cleared
 * MEMORY_CHANGED flag set True
 * 5x4 font sprites loaded in 0x0000..0x004F (5*16 == 80 == 0x50)
@@ -208,10 +209,11 @@ def reset_vm( memload : List[int] = None ) -> None :
     REGS[R.P] = 0x0200
 
     '''
-    Reset the display to CHIP-8 mode and sound off
+    Reset the display to CHIP-8 mode, sound off, latched key cleared
     '''
     display.set_mode( schip= False ) # also clears display
     display.sound( on= False )
+    _ = display.key_read( ) # also clears any latch
 
     '''
     Clear memory, load font sprites
