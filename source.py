@@ -1001,15 +1001,22 @@ class SourceWindow( QMainWindow ) :
         first_block = self.document.firstBlock()
         '''
         Because we are about to (re) assemble, clear all breakpoints both
-        from the emulator and from any statements that have them.
+        from the emulator and from any statements that have them. We have to
+        do this statement by statement because all these statements will
+        still be here (unlike File>New or >Open where we know all existing
+        statements will be erased).
         '''
         next_block = first_block
         while next_block.isValid():
             self.editor.clear_bp_status( next_block )
             next_block = next_block.next()
 
+        '''
+        Assemble the document text, getting back a list of ints (which might
+        be empty, for an empty doc).
+        '''
         mem_load = assemble( first_block )
-        if mem_load[0] < 0 :
+        if (mem_load) and mem_load[0] < 0 :
             '''
             The assembler found errors. The count of syntax errors (which
             the user ought to have corrected before clicking CHECK!) is in
