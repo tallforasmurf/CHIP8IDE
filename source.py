@@ -1053,6 +1053,12 @@ class SourceWindow( QMainWindow ) :
     Copied from the Qt Application Example, maybe_save() is called
     whenever there is a chance of losing the user's work, to give
     the user an option of saving or cancelling the operation.
+    Returns:
+      - True if the current document is not modified OR if the
+        user clicks Discard/Don't Save
+      - False if user clicks Cancel (meaning abort this operation)
+      - The result of File>Save if the user clicks Save -- and that might
+        be False if the save fails or is cancelled, so abort.
     '''
     def maybe_save( self, why:str ) :
         if self.document.isModified() :
@@ -1066,7 +1072,7 @@ class SourceWindow( QMainWindow ) :
                 return False
             if choice == QMessageBox.Save :
                 return self.file_save()
-        return True
+        return True # document not modified or choice==QMB.Discard
 
     '''
     Set up a new document, either from File>Open or File>New.
@@ -1132,7 +1138,11 @@ class SourceWindow( QMainWindow ) :
                 )
             if len(chosen_path) == 0 :
                 return False
-
+        else :
+            '''
+            User clicked Cancel on maybe_save, or save failed.
+            '''
+            return False
         '''
         We have a file path to (try to) open. We will use Python facilities
         for this (as opposed to using QFile and QTextStream).
