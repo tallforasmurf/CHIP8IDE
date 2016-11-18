@@ -401,8 +401,6 @@ class KeyPadButton( QToolButton ) :
     Set our "down" status true. This changes the background color so you
     see the button was triggered. It does not send our pressed signal, so
     generate that manually.
-
-    Start a one-shot timer that will call key_up below.
     '''
     def keyboard_press( self ) :
         self.setDown( True )
@@ -768,7 +766,7 @@ class DisplayWindow( QWidget ) :
     def keyReleaseEvent( self, event) :
         key = event.text()
         index = self.key_mapper.current_map.find( key )
-        if index != -1 :
+        if (key) and index != -1 :
             event.accept() # yes, we handle this event
             self.keypad.keyboard_release( index )
         else :
