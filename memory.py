@@ -138,6 +138,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget
 )
+from PyQt5.QtTest import QTest
 
 
 '''
@@ -1174,12 +1175,24 @@ def step():
 
     STATUS_LINE.clear()
 
+    '''
+    If the sound should be on, turn it on.
+    '''
+    if chip8.REGS[ R.S ] :
+        display.sound( on=True )
+        QTest.qWait(5)
+    '''
+    Execute one instruction
+    '''
     result = chip8.step()
-
+    '''
+    Turn the sound off in case it was on or was turned on.
+    '''
+    display.sound( on=False )
+    '''
+    If chip8 returned some error status, show it.
+    '''
     if result is not None :
-        '''
-        chip8 returned some error status, show it.
-        '''
         STATUS_LINE.setText( result )
 
 
