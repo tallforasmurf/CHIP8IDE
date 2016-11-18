@@ -923,13 +923,41 @@ class MasterWindow( QWidget ) :
             THREAD_MUTEX.unlock()
 
     '''
-    When the vm is reset, make all the tables update.
+    When the vm is reset, #1, STOP THE EMULATOR. Then, make all the tables
+    update.
+
+    Because the free-running emulator is in another thread, there is a big
+    fat race condition if the user hits LOAD on the source window while
+    emulation is going on. That calls chip8.reset_vm() which zeros memory
+    and registers, maybe reloads memory, all while possibly simultaneously
+    the Run thread is calling into the chip8.step() function. Well, the worst
+    that can happen is, step() will see an error e.g. from trying to decode
+    a bunch of zero bytes, and the Run thread will stop on its own.
+
+    The real race condition is between that happening, which will make
+    the Run thread call RUN_STOP_BUTTON.click(), and our doing the same
+    thing from here.
     '''
     def reset_display( self ) :
         global MEMORY_CHANGED
-        MEMORY_CHANGED = True
-        self.begin_resets()
-        self.end_resets()
+        MEMORY_CHANGED = True # we do want the memory table updated
+
+        if RUN_STOP_BUTTON.isChecked() :
+            '''
+            The button is in the checked state, meaning the emulator is
+            running. Simulate a user click to force it to unchecked state
+            and emit the signal that will call run_stop_click() above.
+            It in turn will call end_resets() to update displays.
+            '''
+            RUN_STOP_BUTTON.click()
+        else :
+            '''
+            The emulator is not actively running. However, owing to the
+            reset_vm call, the memory and register displays should be
+            refreshed, so make that happen.
+            '''
+            self.begin_resets()
+            self.end_resets()
 
     '''
     Tell our attached display widgets that their underlying data will
@@ -1126,10 +1154,10 @@ class RunThread( QThread ) :
             else :
                 '''
                 We stopped because the emulator cannot continue.
-                Toggle the Run/Stop switch directly.
+                Toggle the Run/Stop switch directly, if it needs it.
                 '''
-                RUN_STOP_BUTTON.click()
-            # print(burn_count, shortfall)  # DBG
+                if RUN_STOP_BUTTON.isChecked():
+                    RUN_STOP_BUTTON.click()
             '''
             Rinse and repeat.
             '''
