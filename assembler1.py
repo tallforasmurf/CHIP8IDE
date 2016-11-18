@@ -457,10 +457,13 @@ def phase_one( statement_text: str, S : Statement ) :
             continue
 
         '''
-        Save this recognizable token with its type, value and start/end position
+        Save this recognizable token with its type, value and start/end position.
+        If it is a word token, uppercase it now.
         '''
         token_type = match.lastgroup
         token_value = match.group( token_type )
+        if token_type == 'WORD' :
+            token_value = token_value.upper()
         token_start, token_end = match.span( token_type )
         tokens.append( Token( token_type, token_value, token_start, token_end ) )
 
@@ -475,11 +478,12 @@ def phase_one( statement_text: str, S : Statement ) :
     '''
     if len(tokens) and tokens[0].t_type == 'LABEL' :
             '''
-            Normal label: Store the name (minus the colon that is included in
-            the match) and leave S.defined_value at None. Then discard the
-            label token.
+            Normal label: Store the name in S.defined_name (minus the colon
+            that was included in the match, and uppercased). Leave
+            S.defined_value at None, it is set during assembler2. Then
+            discard the label token.
             '''
-            S.defined_name = tokens[0].t_value[:-1]
+            S.defined_name = tokens[0].t_value[:-1].upper()
             tokens = tokens[1:]
     elif len(tokens) >= 3 \
          and tokens[0].t_type == 'WORD' \
