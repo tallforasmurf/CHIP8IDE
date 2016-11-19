@@ -757,28 +757,59 @@ def do_read_timer( INST: int, PC: int ) -> int :
     return PC+2
 
 '''
-0xFx0A, wait for a key.
+0xFx0A, wait for a key. According to the original COSMAC User Manual,
 
-This instruction locks up the virtual machine until a key is pressed. However
-we do not want to enter a solid loop testing for a key because that would
-prevent Qt events from being processed, which would mean the display window
-could never register the key-press! Also, we want to let the user break out
-of this instruction by clicking off the Run button in the Memory window.
+  "The FXOA instruction waits for a hex key to be pressed, VX is
+  then set to the value of the pressed key, and program execution
+  continues when the key is released."
+            ^^^^^^^^^^^^^^^^^^^^^^^^
 
-So in order to get the key repeated, but not monopolize the CPU, we play a
-trick: if no key is pressed we return PC, which means this instruction will
-be executed again. Only if a key is pressed do we return the normal PC+2.
+So this instruction locks up the virtual machine until a key is pressed AND
+released. However, we do not want to enter a solid loop testing for a key
+(and then testing for its release) because that would prevent Qt events from
+being processed, which would mean the display window could never register the
+key-press! Also, we want to let the user break out of this instruction by
+clicking off the Run button in the Memory window.
+
+So we play a trick: until a key has been pressed and released, we return
+PC+0. As a result, the same instruction will be repeated. Only when a key has
+been pressed and then released do we return the normal PC+2 so execution can
+continue to the next instruction.
+
 '''
 
+KEY_STATE = None
+
 def do_wait_key( INST: int, PC: int ) -> int :
-    global REGS
+    global REGS, KEY_STATE
 
-    key = display.key_read()
-    if key < 0 : # no key pressed,
-        return PC # ..retry this instruction
+    if KEY_STATE is None :
+        '''
+        We have not as yet seen a key go down.
+        '''
+        key = display.key_read()
+        if key >= 0 :
+            '''
+            A key is down. Note it, but in any case return PC+0 so we retry.
+            '''
+            KEY_STATE = key
+    else :
+        '''
+        A key has made contact; is it still down?
+        Note: use key_test so a not to "consume" the next key.
+        '''
+        if KEY_STATE != display.key_test() :
+            '''
+            Either the key has been released so that key_test() returns -1,
+            or a different key has been pressed; either way this instruction
+            is complete.
+            '''
+            REGS[ ( INST & 0x0F00 ) >> 8 ] = KEY_STATE
+            KEY_STATE = None
+            return PC+2 # ok to carry on
 
-    REGS[ ( INST & 0x0F00 ) >> 8 ] = key
-    return PC+2 # ok to carry on
+    return PC # ..retry this instruction
+
 
 '''
 F015, LD DT, vx
