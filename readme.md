@@ -9,7 +9,7 @@ designed for the COSMAC VIP, an early microcomputer kit, in 1977-78.
 CHIP8IDE allows entry, editing, assembly, disassembly, execution and
 debugging of programs written for the S/CHIP-8 architecture.
 
-**for current status and to-do list scroll to end**
+Test of bold asterisk: ***** or **\*** ?
 
 ## User interface
 
@@ -352,8 +352,3 @@ results. It might even be automatically checked...
 Some modules have an "if name is main" section that executes basic sanity tests
 against the module code. I did not use pytest or nose or any other unit test
 framework. The unit tests are just hacked in. So sue me.
-
-## >>>CURRENT STATUS<<<
-
-All modules are code-complete except for TODO items and bugs
-listed in the [github repo](https://github.com/tallforasmurf/CHIP8IDE).
