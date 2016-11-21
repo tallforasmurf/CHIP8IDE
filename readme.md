@@ -9,8 +9,6 @@ designed for the COSMAC VIP, an early microcomputer kit, in 1977-78.
 CHIP8IDE allows entry, editing, assembly, disassembly, execution and
 debugging of programs written for the S/CHIP-8 architecture.
 
-Test of bold asterisk: ***** or **\*** ?
-
 ## User interface
 
 CHIP8IDE puts up three independent windows, the Display window, the Memory
