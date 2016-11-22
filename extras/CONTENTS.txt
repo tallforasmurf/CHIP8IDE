@@ -1,0 +1,217 @@
+
+
+			CONTENTS OF THE "EXTRAS" FOLDER
+	
+					CHIP8IDE
+
+This Extras folder contains documents and programs. The documents are
+useful aids and orientation to CHIP-8 programming. The programs are
+selected from various locations as being instructive demos of the
+possibilities of the CHIP-8.
+
+
+	 ==== ==== ==== ==== docs ==== ==== ==== ====
+
+In the docs folder you will find these files:
+
+	assembler_reference.pdf
+
+This is the documentation for the CHIP-8 assembly language as supported
+by CHIP8IDE. It may be convenient to keep this file open while you are
+writing code.
+
+	COSMAC_VIP_Manual.pdf
+
+This is an edited copy of the manual that came with the RCA COSMAC VIP
+single-board computer. This shortened version contains the text related to
+the CHIP-8 language, and the appendix containing a number of game programs.
+(The full document, with information about the hardware and how to connect
+it to a TV and save programs to cassette tape, is available online; see
+the README.md file for a link.)
+
+	An_Easy_Programming_System.pdf
+
+This contains the text and figures from an article by the CHIP-8 designer,
+Joseph Weisenbecker, that appeared in BYTE magazine in December 1974.
+
+	 ==== ==== ==== ==== asm ==== ==== ==== ====
+
+In the asm folder are assembly source files for CHIP-8 and SCHIP
+programs that you can load in CHIP8IDE and run or edit. When the authors
+are known they are credited in parens. See list of credits at end.
+
+The following programs are very simple demonstrations of the system and
+programming techniques.
+
+	bouncer.asm (DC)
+
+A simple ball-bouncing-around-the-screen program. Set inst/tick very low
+(like 5) and then raise the value while the program is running. It maxes
+out around 60fps. Suggested enhancement: make a small random change to the
+increment(s) on each bounce, or every 3rd or 4th bounce.
+
+	draw_the_key.asm (DC)
+
+Extremely simply program to read the keypad and display that key value.
+Could be fancied-up by painting the key in multiple places (tile the
+screen with it?), or by painting all 16 characters and turn the one for
+the pressed key to inverse black-on-white.
+
+	kaleid_01.asm (JW, DC)
+	kaleid_02.asm
+
+kaleid_01.asm is the commented and analyzed source code of the KALEIDOSCOPE
+program from the program listings in the appendix to the COSMAC VIP manual.
+The binary for this is found in every collection of CHIP-8 games, but this
+one has hopefully informative comments.
+
+kaleid_02.asm is the same program altered to use the SCHIP screen size.
+Both programs can run at high inst/tick settings, 100 and up.
+
+	move_the_splat.asm (DC)
+
+Simple program that draws an asterisk (or snowflake?) icon and then moves
+it in various directions based on keypad clicks. Demonstrates use of
+indexing an array to translate key values. The asterisk wraps around the
+screen.
+
+	scroll_test.asm (DC)
+
+Simple program to test that the scroll instructions work. Demonstrates use
+of an expression to avoid needing a literal value in the DRAW instruction
+for the byte-count of a sprite.
+
+	show_random_number.asm (MM)
+
+Gets a random number and displays it in decimal. Demonstrates the use of
+the RND, STD, LDM and DRAW instructions.
+
+	tone_test.asm (DC)
+
+Demonstrates different lengths of the sound. Waits for two keypad digits,
+then loads the Sound timer with that binary value, 00-FF. The code also
+demonstrates one way to pass values to a subroutine.
+
+	weisbecker_1.asm (JW, DC)
+
+The code of the first demo program in the BYTE article by Weisbecker (see
+the PDF listed above), translated to assembly language. All it does is
+display a rocket image in the upper left corner.
+
+	weisbecker_2.asm (JW, DC)
+
+The code of Weisbecker's longer example program from the BYTE article.
+A UFO sprite flies across the top of the screen. Click "F" to launch your
+rocket upward and get a score if it intercepts the UFO. Best with a low
+inst/tick count like 10 or 15. Could be much improved, for example, the
+rocket should move a lot faster upward than the UFO moves across.
+
+	15PUZZLE.SRC (DW, RI)
+
+Displays the digits 1-F in a square array with one empty spot. Click
+a keypad key above, below, left or right of the empty cell to slide
+the digits into that space. Per the comments, it doesn't know when you
+have "solved" the puzzle. Playable at any speed; smoothest at 100/tick.
+Demonstrates use of indexed access to memory, and bit manipulation.
+Suggestion: figure out how to scramble the initial layout, and how to
+recognize when the puzzle is solved by getting digits into numeric order
+(or into keypad arrangement?) and complimenting the user on a win.
+
+	BREAKOUT.SRC (DW)
+
+Your basic Breakout. Set inst/tick low, less than 10, to make playable.
+"4" moves left, "6" moves right. Paddle can wrap around from one side
+to the other.
+
+	BRIX.SRC (DW, PV)
+
+Another Breakout clone. Playable at 10 inst/tick.
+
+	JOUST23 (DW)
+
+Disassembled source from a binary file. Playable at 20-30 inst/tick.
+Click "A" to start a game. Click and hold "A" to climb. "3" to move left,
+"C" to move right.
+
+	PONG.SRC (DW, PV)
+
+A basic PONG clone. 1 and 4 keys move the left paddle; C and D move the right
+paddle. Playable for one person at ~8 inst/tick. Playable for two (one on
+keyboard 1/Q keys for the left paddle, the other on mouse doing the right
+paddle) at higher speeds.
+
+	 ==== ==== ==== ==== binary ==== ==== ==== ====
+
+In the binary folder is a selection of games from arond the internet
+which are playable, but for which no source is known. Open them in 
+CHIP8IDE to see the disassembly. Click Load, click Run, click on the
+Display window and try to play. Set breakpoints and single-step to figure
+out how they work, and how to improve them.
+
+	CAR (DW)
+
+CAR is racecar game for the SCHIP screen. Key "7" to move left, "8" to
+move right. Playable up to 20 inst/tick.
+
+	FRAMED MK2 (MZ)
+
+An entertaining program that draws its way around the screen interfering
+with its own trail to make a random pattern. Credit to "GV Samways, 1980".
+
+	heart_monitor.ch8 (MM)
+
+Displays a simulated heart-monitor wave trace with appropriate beep
+sounds.
+
+	HIDDEN (DW)
+
+HIDDEN is a memory game written by David Winter. See the file HIDDEN.DOC
+for rules.
+
+	INVADERS (DW)
+
+INVADERS is a Space Invaders type game written by David Winter. It is
+noteworthy in that it seems to contain a complete alphabetic character font
+that fits the CHIP-8 5x8 character sprite format.
+
+Keys are: 4 to move left, 6 to move right, 5 to shoot or start the game.
+
+	morse_demo.ch8 (MM)
+
+Displays "COSMAC VIP" (which means it contains sprites for at least those
+characters) while also playing the Morse code for those letters.
+
+	PongForOne.ch8 (MZ)
+
+Looks very like the PONG program in the "asm" collection above, except the
+right-hand paddle is operated by the game (and it does miss sometimes).
+Much easier to play than a two-handed game.
+
+	TETRIS
+
+TETRIS is a (guess what) Tetris clone from David Winter's collection.
+Key 5 to move left, 6 to move right, 4 to rotate the piece.
+Key 7 to drop. Playable at 10-20  inst/tick, although the 4 key tends to
+get a bit over-sensitive above 10/tick. Suggestion: there is unused screen
+space, use some of it to show the queue of upcoming pieces. Add appropriate
+long and short beeps.
+
+	 ==== ==== ==== ==== Credits ==== ==== ==== ====
+
+(DC) David Cortesi, written as part of CHIP8IDE development.
+
+(DW) David Winter, the curator of the CHIP-8 collection at
+http://www.pong-story.com/chip8/
+
+(JW) Joseph Weisenbecker, designer of the COSMAC computer and the CHIP-8
+virtual machine.
+
+(MM) Matthew Mikolay, proprietor of the RetroComputing page at
+http://retro.mattmik.com/index.html
+
+(MZ) The collection of "mirz3" at https://github.com/mir3z
+
+(PV) Paul Vervalin, credited by (DW) in some source files.
+
+(RI) Roger Ivie, credited by (DW) in some source files.
+
