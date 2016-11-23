@@ -44,6 +44,7 @@ needed to complete the assembly later, in the assemble() function of the
 assemble2 module.
 
 '''
+import logging
 
 '''
 Define exported names.
@@ -709,7 +710,8 @@ def phase_one( statement_text: str, S : Statement ) :
                     # > -> >>
                     python_expression.append( '>>' )
                 else:
-                    assert False # no other tokens could get this far
+                    logging.error('Error processing expression token type {} value {}'.format( token.t_type, op ) )
+                    python_expression.append( '!!' )
 
         python_expression = ' '.join( python_expression )
 
