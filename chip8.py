@@ -211,7 +211,8 @@ def reset_vm( memload : List[int] = None ) -> None :
     '''
     Reset the display to CHIP-8 mode, sound off, latched key cleared
     '''
-    display.set_mode( schip= False ) # also clears display
+    display.set_mode( schip= False )
+    display.clear( )
     display.sound( on= False )
     _ = display.key_read( ) # also clears any latch
 
