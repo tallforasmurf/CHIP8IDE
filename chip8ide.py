@@ -66,17 +66,26 @@ log_handler = logging.handlers.RotatingFileHandler(
     log_path, mode='a', encoding='UTF-8', maxBytes=100000, backupCount=5
 )
 
-
 '''
-Set up the log at level INFO, meaning that INFO and ERROR messages
-go into it while DEBUG messages do not.
-
-TODO: find some way to make this optional. Not from command line
-options since, as a GUI app, we don't usually see command line options.
-Maybe an environment var?
+Check for an environment variable CHIP8_LOG_LEVEL and if it
+is present, use it to set the log-level.
 '''
+log_levels = {
+    'CRITICAL':logging.CRITICAL,
+    'DEBUG':logging.DEBUG,
+    'ERROR':logging.ERROR,
+    'FATAL':logging.FATAL,
+    'INFO':logging.INFO
+}
+choice = 'INFO'
+desired_level = log_levels[ choice ]
 
-logging.basicConfig( handlers=[log_handler], level=logging.INFO )
+if 'CHIP8_LOG_LEVEL' in os.environ :
+    choice = os.environ['CHIP8_LOG_LEVEL'].upper()
+    if choice in log_levels :
+        desired_level = log_levels[ choice ]
+
+logging.basicConfig( handlers=[log_handler], level=desired_level )
 
 '''
 Write startup lines to the log
@@ -88,13 +97,17 @@ from PyQt5.QtCore import PYQT_VERSION_STR
 from PyQt5.QtCore import QT_VERSION_STR
 
 logging.info( '==========================================' )
-logging.info( '{} starting up on {} with Qt {} and PyQt {}'.format(
-    APPNAME,
-    now.ctime(),
-    QT_VERSION_STR,
-    PYQT_VERSION_STR
+logging.info(
+    '{} starting up on {} with Qt {} and PyQt {}'.format(
+        APPNAME,
+        now.ctime(),
+        QT_VERSION_STR,
+        PYQT_VERSION_STR
     )
-             )
+)
+if choice not in log_levels :
+    logging.error( 'Unknown value for CHIP8_LOG_LEVEL: {}'.format(choice) )
+    logging.error( 'Logging at INFO level' )
 
 '''
 Create the QApplication. This does a ton of Qt setup stuff.
