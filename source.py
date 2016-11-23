@@ -56,10 +56,11 @@ This assembler does NOT support those directives. (To be revisited if it
 turns out desirable game programs use them.)
 
 The File>Load and File>Save commands are implemented in this module.
-
-   DESCRIPTION TODO
+See below for commentary.
 
 '''
+
+import logging
 
 '''
 Define exported names. TODO
@@ -1314,13 +1315,13 @@ def initialize( settings ) :
 
 
 if __name__ == '__main__' :
+    pass
+    #'''
+    #Aaaaand we hack up some tests. Lasciate ogne speranza...
+    #'''
+    ##from binasm import binasm
 
-    '''
-    Aaaaand we hack up some tests. Lasciate ogne speranza...
-    '''
-    #from binasm import binasm
-
-    from PyQt5.QtWidgets import QApplication
-    args = []
-    the_app = QApplication( args )
+    #from PyQt5.QtWidgets import QApplication
+    #args = []
+    #the_app = QApplication( args )
 
