@@ -72,6 +72,7 @@ Because this is a module (rather than a singleton class definition) it is
 necessary to code Pascal-style, defining all names before they are used.
 
 '''
+import logging
 
 '''
 Define this module's API:
