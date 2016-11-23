@@ -1091,9 +1091,11 @@ class RunThread( QThread ) :
             self.wait_for_click.wait( self.mutex )
             '''
             Yawn. Stretch. OK, set up to enter the loop.
+            Tell the Screen that a new thread will be calling it.
             If the emulated sound is supposed to be going, restart it.
             Initialize a counter. Start the timer going.
             '''
+            display.change_of_thread( True )
             if chip8.REGS[ chip8.R.S ] :
                 display.sound( on=True )
             tick_limit = INST_PER_TICK.value()
@@ -1160,7 +1162,11 @@ class RunThread( QThread ) :
                 if RUN_STOP_BUTTON.isChecked():
                     RUN_STOP_BUTTON.click()
             '''
-            Rinse and repeat.
+            Tell display that another thread (possibly) will be calling it.
+            '''
+            display.change_of_thread( False )
+            '''
+            Start over from the wait.
             '''
 
 '''
