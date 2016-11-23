@@ -78,6 +78,8 @@ __all__ = [
     'sound'
 ]
 
+import logging
+
 from typing import List, Tuple
 
 '''
@@ -1040,16 +1042,19 @@ def initialize( settings: QSettings ) -> None :
 
 
 if __name__ == '__main__' :
-    from PyQt5.QtWidgets import QApplication
-    args = []
-    the_app = QApplication( args )
-    settings = QSettings()
-    ##settings.clear()
-    initialize(settings)
-    OUR_WINDOW.show()
-    sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
-    draw_sprite( 16, 8, sprite )
-    the_app.exec_()
+
+    pass
+
+    #from PyQt5.QtWidgets import QApplication
+    #args = []
+    #the_app = QApplication( args )
+    #settings = QSettings()
+    ###settings.clear()
+    #initialize(settings)
+    #OUR_WINDOW.show()
+    #sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
+    #draw_sprite( 16, 8, sprite )
+    #the_app.exec_()
 
     #url = QUrl( 'qrc:/330HzSQARE.wav' )
     #print('url',url.isValid() )
