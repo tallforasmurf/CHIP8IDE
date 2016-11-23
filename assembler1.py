@@ -494,7 +494,8 @@ def phase_one( statement_text: str, S : Statement ) :
          and ( 'EQU' == tokens[1].t_value.upper() or '=' == tokens[1].t_value ) :
             '''
             WORD EQU expression (well, probably an expression, assume it is
-            for now). Strip only the word, storing it in S. Leave
+            for now). Strip only the word, storing it in S.defined_name
+            (being a WORD token it has already been uppercased). Leave
             S.defined_value None. Also, normalize the EQU to a single form.
             '''
             tokens[1].t_value = 'EQU' # in case it said "="
