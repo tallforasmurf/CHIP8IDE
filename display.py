@@ -269,17 +269,21 @@ class Screen( QLabel ) :
         '''
         return QRect( rect.x()+x_diff, rect.y()+y_diff, rect.width(), rect.height() )
 
-    def scroll_right( self ) :
-        P = self.P
-        offset = P * ( 4 if self.extended_mode else 2 )
-        new_rect = self.displace_rect( self.image.rect(), -offset, 0 )
+    def finish_scroll( self, new_rect ) :
+        '''
+        Factored out of the three scroll methods, build a new QImage
+        from the old one based on an overlapping rectangle, and
+        install it as our image and display it.
+        '''
         new_image = self.image.copy( new_rect )
         self.image = new_image
         self.setPixmap( QBitmap.fromImage( self.image ) )
 
-    def DBGPRECT( self, rect, title ) :
-        print( title )
-        print( 'rect x={} y={} w={} h={}'.format(rect.x(),rect.y(),rect.width(),rect.height() ) )
+    def scroll_right( self ) :
+        P = self.P
+        offset = P * ( 4 if self.extended_mode else 2 )
+        new_rect = self.displace_rect( self.image.rect(), -offset, 0 )
+        self.finish_scroll( new_rect )
 
     '''
     Implement scroll-left. Same technique as scroll-right.
@@ -288,9 +292,7 @@ class Screen( QLabel ) :
         P = self.P
         offset = P * ( 4 if self.extended_mode else 2 )
         new_rect = self.displace_rect( self.image.rect(), offset, 0 )
-        new_image = self.image.copy( new_rect )
-        self.image = new_image
-        self.setPixmap( QBitmap.fromImage( self.image ) )
+        self.finish_scroll( new_rect )
 
     '''
     And scroll-down.
@@ -299,9 +301,7 @@ class Screen( QLabel ) :
         P = self.P
         offset = P * rows
         new_rect = self.displace_rect( self.image.rect(), 0, -offset )
-        new_image = self.image.copy( new_rect )
-        self.image = new_image
-        self.setPixmap( QBitmap.fromImage( self.image ) )
+        self.finish_scroll( new_rect )
 
 
     '''
