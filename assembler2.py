@@ -46,6 +46,7 @@ the S.expr_error flag) and return None. The Check handler then takes appropriate
 action to inform the user.
 
 '''
+import logging
 
 __all__ = [ 'assemble' ]
 
@@ -482,8 +483,7 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
                     expr_errors += 1
                     S.error_pos = 0
                     S.error_msg = str(E)
-            else :
-                assert S.form == 'ORG'
+            elif S.form == 'ORG' :
                 '''
                 For ORG, evaluate the expression and make sure it falls in
                 the valid range for memory addresses. Then set PC from it.
@@ -497,6 +497,13 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
                     expr_errors += 1
                     S.error_pos = 0
                     S.error_msg = str(E)
+            else :
+                s.expr_error = True
+                expr_errors += 1
+                S.error_pos = 0
+                S.error_msg = 'assembler bug S.form{} but S.next_pc is None'.format(S.form)
+                logging.error(S.error_msg)
+
         # endif S.text_error
         '''
         Make sure the PC is still in range. If not, tag the current statement
@@ -546,7 +553,7 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
 
     It is still possible to get errors because it is only now that we try to
     evaluate expressions in opcodes. When exceptions occur in the subordinate
-    functions (the ones called from opcode_dict) the bubble up to here. We
+    functions (the ones called from opcode_dict) they bubble up to here. We
     mark the statement but continue. In general we want to document as many
     errors as possible, to save the user the trouble of correcting errors one
     at a time.
@@ -581,9 +588,15 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
                 PC += S.next_pc
             elif S.form == 'EQU' :
                 pass
-            else :
-                assert S.form == ''
+            elif S.form == '' :
                 pass
+            else :
+                expr_errors += 1
+                S.expr_error = True
+                S.error_pos = 0
+                S.error_msg = 'assembler error S.form{} unexpected'.format(S.form)
+                logging.error( S.error_msg )
+
         # endif S.form in opcode_dict
         top_address = max( top_address, PC )
         this_block = this_block.next()
