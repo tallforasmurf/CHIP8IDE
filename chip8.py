@@ -22,6 +22,11 @@ __copyright__ = "Copyright 2016 David Cortesi"
 __maintainer__ = "David Cortesi"
 __email__ = "davecortesi@gmail.com"
 
+import logging
+
+'''
+Get access to display.py methods such as sound() and key_read().
+'''
 import display
 
 '''
@@ -192,6 +197,8 @@ def reset_vm( memload : List[int] = None ) -> None :
 
     global MEMORY, MEMORY_CHANGED, REGS, CALL_STACK
 
+    logging.debug( 'Reset emulated machine' )
+
     '''
     Clear the call stack.
     '''
@@ -267,8 +274,6 @@ def bp_rem( bp : int ) -> bool :
 '''
 Initialize the module on first load. We get a settings object
 and save it.
-
-TODO  Do we do anything with it?
 '''
 
 from PyQt5.QtCore import QSettings
@@ -281,8 +286,6 @@ def initialize( settings : QSettings ) -> None :
 
 '''
 Shut down the module, saving anything useful in the settings.
-
-TODO: anything here?
 '''
 
 def closeEvent( ) -> None :
