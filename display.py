@@ -192,6 +192,12 @@ class Screen( QLabel ) :
         self.white_color = QColor( "white" )
         self.image.fill( self.black_color )
         '''
+        Set up a slot for a QPainter which is created if necessary, or
+        used if it already exists.
+        '''
+        self.picasso = None # type: QPainter
+        self.ok_to_resize = True
+        '''
         Set the initial emulated screen mode to standard, 32x64. Initialize
         the factor P to the current height of the image.
         '''
@@ -200,10 +206,12 @@ class Screen( QLabel ) :
 
     '''
     Clear the emulated screen to black and update our pixmap contents.
+    Get rid of a QPainter if we have one.
     '''
     def clear( self ) -> None :
         self.image.fill( self.black_color )
         self.setPixmap( QBitmap.fromImage( self.image ) )
+        self.picasso = None
 
     '''
     Get and set the screen mode, where True means SCHIP or extended mode.
@@ -238,14 +246,15 @@ class Screen( QLabel ) :
         hit = False
         P = self.P
         P2 = P >> 1
-        monet = QPainter( self.image )
+        if self.picasso is None :
+            self.picasso = QPainter( self.image )
         for cx, cy in pixels :
             px = cx * P
             py = cy * P
             was_white = 0xff000000 != self.image.pixel( px + P2, py + P2 )
             hit |= was_white
             color = Qt.black if was_white else Qt.white
-            monet.fillRect( px, py, P, P, color )
+            self.picasso.fillRect( px, py, P, P, color )
         self.setPixmap( QBitmap.fromImage( self.image ) )
         return hit
 
@@ -269,17 +278,22 @@ class Screen( QLabel ) :
         '''
         return QRect( rect.x()+x_diff, rect.y()+y_diff, rect.width(), rect.height() )
 
+    def finish_scroll( self, new_rect ) :
+        '''
+        Factored out of the three scroll methods, build a new QImage
+        from the old one based on an overlapping rectangle, and
+        install it as our image and display it.
+        '''
+        new_image = self.image.copy( new_rect )
+        self.image = new_image
+        self.picasso = None
+        self.setPixmap( QBitmap.fromImage( self.image ) )
+
     def scroll_right( self ) :
         P = self.P
         offset = P * ( 4 if self.extended_mode else 2 )
         new_rect = self.displace_rect( self.image.rect(), -offset, 0 )
-        new_image = self.image.copy( new_rect )
-        self.image = new_image
-        self.setPixmap( QBitmap.fromImage( self.image ) )
-
-    def DBGPRECT( self, rect, title ) :
-        print( title )
-        print( 'rect x={} y={} w={} h={}'.format(rect.x(),rect.y(),rect.width(),rect.height() ) )
+        self.finish_scroll( new_rect )
 
     '''
     Implement scroll-left. Same technique as scroll-right.
@@ -288,9 +302,7 @@ class Screen( QLabel ) :
         P = self.P
         offset = P * ( 4 if self.extended_mode else 2 )
         new_rect = self.displace_rect( self.image.rect(), offset, 0 )
-        new_image = self.image.copy( new_rect )
-        self.image = new_image
-        self.setPixmap( QBitmap.fromImage( self.image ) )
+        self.finish_scroll( new_rect )
 
     '''
     And scroll-down.
@@ -299,9 +311,7 @@ class Screen( QLabel ) :
         P = self.P
         offset = P * rows
         new_rect = self.displace_rect( self.image.rect(), 0, -offset )
-        new_image = self.image.copy( new_rect )
-        self.image = new_image
-        self.setPixmap( QBitmap.fromImage( self.image ) )
+        self.finish_scroll( new_rect )
 
 
     '''
@@ -360,7 +370,7 @@ class Screen( QLabel ) :
             threshhold_w = threshhold_h >> 1 # that  is, 64 or 32
             do_resize = (threshhold_h <= ( new_h - old_h ) \
                          and threshhold_w <= ( new_w - old_w ) )
-        if do_resize :
+        if do_resize and self.ok_to_resize :
             self.P = int( new_w / ( 128 if self.extended_mode else 64 ) )
             new_size = QSize(
                 self.P * ( 128 if self.extended_mode else 64 ),
@@ -908,6 +918,22 @@ Scroll the emulated screen 2 or 4 columns right, depending on mode.
 
 def scroll_right( ) -> None :
     SCREEN.scroll_right()
+
+'''
+The Screen keeps a QPainter around as long as it is relevant. However
+it is a disaster to try to use a QPainter from a thread different from
+the thread that created it. So whenever the Run thread is starting up
+or shutting down, it calls this function to say, "until further notice
+calls to screen operations will come from a different thread."
+
+Delete any existing QPainter -- that's a thread-safe thing to do --
+and the Screen will recreate it as needed, but in the thread that
+is starting.
+'''
+
+def change_of_thread( running=False ) -> None :
+    SCREEN.picasso = None
+    SCREEN.ok_to_resize = not running
 
 '''
 Turn the emulated beeper/tone on or off.
