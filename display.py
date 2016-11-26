@@ -244,7 +244,7 @@ class Screen( QLabel ) :
     Paint a list of CHIP-8 pixels by the CHIP-8 XOR rule (if black, turn white,
     if white, turn black), and return the truth of whether any were white.
     '''
-    def paint_pixel_list( self, pixels: List[Tuple[int]] ) -> bool :
+    def paint_pixel_list( self, pixels: List[Tuple[int,int]] ) -> bool :
         hit = False
         P = self.P
         P2 = P >> 1
@@ -254,7 +254,7 @@ class Screen( QLabel ) :
             px = cx * P
             py = cy * P
             was_white = 0xff000000 != self.image.pixel( px + P2, py + P2 )
-            hit |= was_white
+            hit = hit or was_white # mypy doesn't dig hit |= was_white
             color = Qt.black if was_white else Qt.white
             self.picasso.fillRect( px, py, P, P, color )
         self.setPixmap( QBitmap.fromImage( self.image ) )
@@ -393,7 +393,7 @@ in its layout.
 '''
 
 class KeyPadButton( QToolButton ) :
-    def __init__( self, code:int, parent = None ) :
+    def __init__( self, code:int, parent = None ) -> None :
         super().__init__( parent )
         self.code = code
         self.letter = '{:1X}'.format( code )
@@ -1003,7 +1003,7 @@ from PyQt5.QtCore import QSettings
 
 OUR_WINDOW = None # type: QWidget
 SCREEN = None # type: Screen
-KEYPAD = None # type: Keypad
+KEYPAD = None # type: KeyPad
 SFX = None # type: QSoundEffect
 
 def initialize( settings: QSettings ) -> None :
