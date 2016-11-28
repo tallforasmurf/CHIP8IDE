@@ -47,6 +47,7 @@ action to inform the user.
 
 '''
 import logging
+from typing import List, Dict
 
 __all__ = [ 'assemble' ]
 
@@ -65,7 +66,7 @@ or it raises an IndexError with an appropriate message.
 
 '''
 
-SYMBOLS = dict()
+SYMBOLS = dict() # type: Dict[ str, int ]
 
 def LOOKUP( name:str ) -> int :
     try :
@@ -498,7 +499,7 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
                     S.error_pos = 0
                     S.error_msg = str(E)
             else :
-                s.expr_error = True
+                S.expr_error = True
                 expr_errors += 1
                 S.error_pos = 0
                 S.error_msg = 'assembler bug S.form{} but S.next_pc is None'.format(S.form)
