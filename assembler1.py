@@ -45,7 +45,7 @@ assemble2 module.
 
 '''
 import logging
-
+from typing import List, Union
 '''
 Define exported names.
 
@@ -425,7 +425,7 @@ def phase_one( statement_text: str, S : Statement ) :
     '''
     Tokenize the text to get a list of tokens.
     '''
-    tokens = []
+    tokens = [] # type: List[ Token ]
     for match in regex.finditer( t_rex, statement_text ) :
 
         '''
@@ -451,18 +451,19 @@ def phase_one( statement_text: str, S : Statement ) :
         tokenized as STRING('MA') STRING('AM'). Put the parts back together
         in that preceding token, removing one single-quote.
         '''
-        if match.lastgroup == 'STRING' \
+        token_type = match.lastgroup
+        token_value = match.group( token_type )
+
+        if token_type == 'STRING' \
            and tokens \
            and tokens[-1].t_type == 'STRING' :
-            tokens[-1].t_value = tokens[-1].t_value[:-1] + "'" + match.group( token_type )[1:]
+            tokens[-1].t_value = tokens[-1].t_value[:-1] + "'" + token_value[1:]
             continue
 
         '''
         Save this recognizable token with its type, value and start/end position.
         If it is a word token, uppercase it now.
         '''
-        token_type = match.lastgroup
-        token_value = match.group( token_type )
         if token_type == 'WORD' :
             token_value = token_value.upper()
         token_start, token_end = match.span( token_type )
@@ -523,16 +524,16 @@ def phase_one( statement_text: str, S : Statement ) :
     Appending a char to a list does not. So we build up the signature as
     a list of chars, then join it to make a search key.
     '''
-    signature = []
-    expression = []
+    sig_item_list = [] # type: List[str]
+    expression = [] # type: List[ Token ]
     for token in tokens :
         '''
-        The values of OPCODE or DIRECTIVE tokens go into the signature
+        The values of OPCODE or DIRECTIVE tokens go into the sig_items
         unchanged. If they are not the first token, or if there are extra
         ones, the lookup later will fail.
         '''
         if token.t_type == 'OPCODE' or token.t_type == 'DIRECTIVE' :
-            signature.append( token.t_value.upper() ) # LD or ORG or DRAW
+            sig_item_list.append( token.t_value.upper() ) # LD or ORG or DRAW
             continue
         '''
         Fetch the summary char for this token type. The only token type
@@ -545,7 +546,7 @@ def phase_one( statement_text: str, S : Statement ) :
             break # out of the loop
 
         sig_char = summary_chars[ token.t_type ]
-        signature.append( sig_char )
+        sig_item_list.append( sig_char )
 
         '''
         Handle the register codes, storing them in S.reg_1/2, and
@@ -610,7 +611,7 @@ def phase_one( statement_text: str, S : Statement ) :
     be in signature_dict; if not, it should be recognized by signature_regex.
     '''
     instruction_form = None
-    signature = ''.join( signature )
+    signature = ''.join( sig_item_list )
     if signature in signature_dict :
         instruction_form = signature_dict[ signature ]
     else :
@@ -670,50 +671,50 @@ def phase_one( statement_text: str, S : Statement ) :
         '''
         Again, collect a string as a list of sub-strings, then join at the end.
         '''
-        python_expression = []
+        python_expression_items = [] # type: List[str]
 
         for token in token_list :
             if token.t_type == 'DECIMAL' :
                 # Decimals are fine except for avoiding a leading 0. However,
                 # lstrip can get carried away...
                 nonzero_decimal = token.t_value.lstrip('0')
-                python_expression.append( nonzero_decimal if len(nonzero_decimal) else '0' )
+                python_expression_items.append( nonzero_decimal if len(nonzero_decimal) else '0' )
             elif token.t_type == 'HEX' :
                 # #0f -> 0x0f
-                python_expression.append( '0x0' + token.t_value[1:] )
+                python_expression_items.append( '0x0' + token.t_value[1:] )
             elif token.t_type == 'BINARY' :
                 # $...1..1 -> $0001001
                 token.t_value = token.t_value.replace('.','0')
                 # $0001001 -> b'0001001'
-                python_expression.append( "0b" + token.t_value[1:] )
+                python_expression_items.append( "0b" + token.t_value[1:] )
             elif token.t_type == 'OCTAL' :
                 # @377 -> 0o377
-                python_expression.append( '0o0' + token.t_value[1:] )
+                python_expression_items.append( '0o0' + token.t_value[1:] )
             elif token.t_type == 'STRING' :
                 # 'ma'am' -> bytes("MA'AM",encoding="ASCII")
-                python_expression.append( 'bytes("' + token.t_value[1:-1].upper() + '", encoding="ASCII")' )
+                python_expression_items.append( 'bytes("' + token.t_value[1:-1].upper() + '", encoding="ASCII")' )
             elif token.t_type == 'WORD' :
                 # LABEL -> LOOKUP("LABEL")
-                python_expression.append( 'LOOKUP("' + token.t_value + '")' )
+                python_expression_items.append( 'LOOKUP("' + token.t_value + '")' )
             else :
                 op = token.t_value
                 if op in '()+-~*/&|^%' :
                     # ( ) + - ~ * / & | ^ % are python
-                    python_expression.append( op )
+                    python_expression_items.append( op )
                 elif op == '!' :
                     # 2!4 -> 2**4
-                    python_expression.append( '**' )
+                    python_expression_items.append( '**' )
                 elif op == '<' :
                     # < -> <<
-                    python_expression.append( '<<' )
+                    python_expression_items.append( '<<' )
                 elif op == '>':
                     # > -> >>
-                    python_expression.append( '>>' )
+                    python_expression_items.append( '>>' )
                 else:
                     logging.error('Error processing expression token type {} value {}'.format( token.t_type, op ) )
-                    python_expression.append( '!!' )
+                    python_expression_items.append( '!!' )
 
-        python_expression = ' '.join( python_expression )
+        python_expression = ' '.join( python_expression_items )
 
         try :
             code_obj = None
@@ -736,7 +737,7 @@ def phase_one( statement_text: str, S : Statement ) :
         return
 
     S.expressions = list( code_list )
-    #S.python_text = python_expression # DBG Save last/only expression text
+
     '''
     If the statement got through all that unscathed it is good -- assuming
     any names it refers to are eventually defined! Now try to figure out how
