@@ -91,7 +91,6 @@ Import the display module just so we can call display.sound().
 
 import chip8
 import display
-from chip8 import R, reset_vm, MEMORY_CHANGED
 
 '''
 Import needed Qt names.
@@ -355,8 +354,6 @@ class MemoryDisplay( QTableView ) :
         end_index = self.model().createIndex(
             int( (PC+1) / MEM_TABLE_COLS ),
             int( (PC+1) % MEM_TABLE_COLS ) )
-        dbg = [start_index.row(),start_index.column()]
-        dbg2 = [end_index.row(), end_index.column() ]
         '''
         Position the table so the (first) row is centered.
         '''
@@ -580,7 +577,7 @@ class RegisterModel( QAbstractTableModel ) :
         col = index.column()
         if role == Qt.DisplayRole :
             pattern = '{0:02X}'
-            if col == R.P or col == R.I :
+            if col == chip8.R.P or col == chip8.R.I :
                 pattern = '{0:03X}'
             return pattern.format( chip8.REGS [ col ] )
         elif role == Qt.ToolTipRole :
@@ -856,6 +853,7 @@ class MasterWindow( QWidget ) :
         Connect the clicked signal of the RUN/STOP switch to run_stop_click().
         '''
         RUN_STOP_BUTTON.clicked.connect( self.run_stop_click )
+
         '''
         Set the window title.
         '''
@@ -941,8 +939,8 @@ class MasterWindow( QWidget ) :
     thing from here.
     '''
     def reset_display( self ) :
-        global MEMORY_CHANGED
-        MEMORY_CHANGED = True # we do want the memory table updated
+        global MEMORY_UPDATE_NEEDED
+        MEMORY_UPDATE_NEEDED = True # we do want the memory table updated
 
         if RUN_STOP_BUTTON.isChecked() :
             '''
@@ -955,7 +953,7 @@ class MasterWindow( QWidget ) :
         else :
             '''
             The emulator is not actively running. However, owing to the
-            reset_vm call, the memory and register displays should be
+            chip8.reset_vm call, the memory and register displays should be
             refreshed, so make that happen.
             '''
             self.begin_resets()
@@ -977,7 +975,7 @@ class MasterWindow( QWidget ) :
     Make the tables resize columns to contents.
     '''
     def end_resets( self ) :
-        global MEMORY_CHANGED
+        global MEMORY_UPDATE_NEEDED
         '''
         The call stack and register displays have already begun-reset,
         so finish them.
@@ -990,14 +988,14 @@ class MasterWindow( QWidget ) :
         it makes STEP slow to respond. And usually isn't needed. Was it
         needed?
         '''
-        if MEMORY_CHANGED :
+        if MEMORY_UPDATE_NEEDED :
             self.memory_display.model().beginResetModel()
             self.memory_display.model().endResetModel()
             self.memory_display.resizeColumnsToContents()
-            MEMORY_CHANGED = False
+            MEMORY_UPDATE_NEEDED = False
 
-        self.memory_display.scroll_to_PC( chip8.REGS[ R.P ] )
-        self.EmulatorStopped.emit( chip8.REGS[ R.P ] )
+        self.memory_display.scroll_to_PC( chip8.REGS[ chip8.R.P ] )
+        self.EmulatorStopped.emit( chip8.REGS[ chip8.R.P ] )
 
     '''
     Override the built-in closeEvent() method to save our geometry and
@@ -1185,13 +1183,14 @@ def step():
     '''
     If the sound should be on, turn it on.
     '''
-    if chip8.REGS[ R.S ] :
+    if chip8.REGS[ chip8.R.S ] :
         display.sound( on=True )
         QTest.qWait(5)
     '''
     Execute one instruction
     '''
     result = chip8.step()
+
     '''
     Turn the sound off in case it was on or was turned on.
     '''
@@ -1220,6 +1219,12 @@ OUR_THREAD = None # type: QThread
 
 THREAD_MUTEX = None # type: QMutex
 
+MEMORY_UPDATE_NEEDED = False
+
+def memory_updated( ) :
+    global MEMORY_UPDATE_NEEDED
+    MEMORY_UPDATE_NEEDED = True
+
 def initialize( settings: QSettings ) -> None :
     global OUR_WINDOW, SETTINGS, OUR_THREAD, THREAD_MUTEX
     '''
@@ -1240,6 +1245,9 @@ def initialize( settings: QSettings ) -> None :
     THREAD_MUTEX = QMutex()
     OUR_THREAD = RunThread( THREAD_MUTEX )
     OUR_THREAD.start()
+
+    chip8.memory_notify( memory_updated )
+
     '''
     Display our window
     '''
@@ -1266,7 +1274,7 @@ if __name__ == '__main__' :
     from PyQt5.QtWidgets import QApplication
     args = [] # type: List[str]
     the_app = QApplication( args )
-    reset_vm( binasm( '6955 6AAA 89A1 89A2 89A3 00FD' ) )
+    chip8.reset_vm( binasm( '6955 6AAA 89A1 89A2 89A3 00FD' ) )
     #chip8.CALL_STACK = [516,532,564]
     initialize(QSettings())
     #STATUS_LINE.setText('helooooo')

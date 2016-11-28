@@ -23,6 +23,7 @@ __maintainer__ = "David Cortesi"
 __email__ = "davecortesi@gmail.com"
 
 import logging
+from typing import List
 
 '''
 Get access to display.py methods such as sound() and key_read().
@@ -39,14 +40,14 @@ __all__ = [
     'REGS',         # dict of regs, keyed by R.
     'MEMORY',       # emulated memory, one int per emulated byte
     'CALL_STACK',   # emulated call stack
-    'MEMORY_CHANGE',# flag set when memory modified
     'reset_vm',     # clear memory, regs, call stack
     'step',         # execute one emulated instruction
     'tick',         # note passage of 1/60th second
     'bp_add',       # add breakpoint
     'bp_rem',       # remove breakpoint
     'bp_clear',     # clear breakpoints
-    'reset_notify', # register a callback for memory resest
+    'reset_notify', # register a callback for memory reset
+    'memory_notify', # register a callback for memory change
     'initialize',   # do some startup TBS
     'shutdown'      # do some shutdown TBS
 ]
@@ -94,13 +95,6 @@ MEMORY is the 4096-byte emulated memory, stored as a list of ints.
 '''
 
 MEMORY = [] # type: List[int]
-
-'''
-MEMORY_CHANGED is a flag set during the only two instructions that can
-actually modify memory, STM and STD. The Memory module uses this to know
-when to update the memory display table.
-'''
-MEMORY_CHANGED = False
 
 '''
 CALL_STACK is a 12-entry list of return addresses. Refer to the COSMAC VIP
@@ -158,11 +152,32 @@ machine is reset. In case, you know, you need to clear something.
 '''
 from typing import Callable
 
-NOTIFY_LIST = [] # type: List[Callable]
+RESET_NOTIFY_LIST = [] # type: List[Callable]
 
 def reset_notify( callback : Callable ) -> None :
-    global NOTIFY_LIST
-    NOTIFY_LIST.append( callback )
+    global RESET_NOTIFY_LIST
+    RESET_NOTIFY_LIST.append( callback )
+
+'''
+Store a list of 0 or more (usually 1) callables to be called when
+the emulated memory is changed by a STM or STD instruction. Used
+from memory.py when a more baroque method failed. If chip8 was any
+kind of Qt class, it could actually issue signals for these two
+conditions, but it isn't and I don't want it to be.
+'''
+
+MEMORY_NOTIFY_LIST = [] # type: List[Callable]
+
+def memory_notify( callback : Callable ) -> None :
+    global MEMORY_NOTIFY_LIST
+    MEMORY_NOTIFY_LIST.append( callback )
+
+def do_notify( callback_list : List[Callable] ) -> None :
+    for callable in callback_list :
+        try:
+            callable( )
+        except Exception as E:
+            pass
 
 '''
 Reset the virtual machine to starting condition:
@@ -195,7 +210,7 @@ from typing import List
 
 def reset_vm( memload : List[int] = None ) -> None :
 
-    global MEMORY, MEMORY_CHANGED, REGS, CALL_STACK
+    global MEMORY,REGS, CALL_STACK, RESET_NOTIFY_LIST
 
     logging.debug( 'Reset emulated machine' )
 
@@ -229,7 +244,6 @@ def reset_vm( memload : List[int] = None ) -> None :
     MEMORY = [0] * 4096
     MEMORY[ 0:80 ] = FONT_5x4
     MEMORY[ 80:240 ] = FONT_8x10
-    MEMORY_CHANGED = True
 
     '''
     If a memload is supplied, it is a list of ints which are the
@@ -243,11 +257,7 @@ def reset_vm( memload : List[int] = None ) -> None :
     '''
     If anyone cares, let them know we are changed.
     '''
-    for callback in NOTIFY_LIST :
-        try : # trust nobody
-            callback( )
-        except Exception as E:
-            pass
+    do_notify( RESET_NOTIFY_LIST )
 
 '''
 Manage the breakpoint list. The Source module calls these entries as the user
@@ -906,7 +916,7 @@ def do_store_decimal( INST: int, PC: int ) -> int :
     MEMORY[ I_reg ] = int( vx/100 ) # high digit
     MEMORY[ I_reg + 1 ] = int( vx % 100 / 10 )
     MEMORY[ I_reg + 2 ] = int( vx % 10 )
-    MEMORY_CHANGED = True
+    do_notify( MEMORY_NOTIFY_LIST )
     return PC+2
 
 '''
@@ -944,9 +954,8 @@ def do_store_regs( INST: int, PC: int ) -> int :
         MEMORY[ I_reg ] = REGS[ i ]
         I_reg += 1
 
-    MEMORY_CHANGED = True
-
     REGS[R.I] = I_reg # "I = I + X + 1" as per COSMAC manual
+    do_notify( MEMORY_NOTIFY_LIST )
     return PC+2
 
 '''
