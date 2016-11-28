@@ -147,8 +147,8 @@ Use Qt facilities to get a monospaced font to use in all widgets.
 Store it in MONOFONT for use from various other modules.
 '''
 
-MONOFONT = None # type QFont
-MONOFONT_METRICS = None # type QFontMetrics
+MONOFONT = None # type: QFont
+MONOFONT_METRICS = None # type: QFontMetrics
 
 def initialize_mono_font( ) :
     global MONOFONT, MONOFONT_METRICS
@@ -213,8 +213,8 @@ some class, like the main window.)
 We cannot instantiate a button until the App is created, so that has
 to wait until our initialize() function (below) is called.
 '''
-RUN_STOP_BUTTON = None # type RunStop
-STEP_BUTTON = None # type RSSButton
+RUN_STOP_BUTTON = None # type: RunStop
+STEP_BUTTON = None # type: RSSButton
 
 '''
 Define the Instructions/tick widget as a QSpinbox (numeric entry widget)
@@ -228,14 +228,14 @@ The start value is taken from saved settings.
 '''
 
 class InstPerTick( QSpinBox ) :
-    def __init__( self, start_value:int ) :
+    def __init__( self, start_value:int ) -> None :
         super().__init__( None )
         self.setMinimum( 1 )
         self.setMaximum( 500 )
         self.setValue( start_value )
         self.setSingleStep( 1 )
 
-INST_PER_TICK = None # type InstPerTick
+INST_PER_TICK = None # type: InstPerTick
 
 '''
 
@@ -350,11 +350,11 @@ class MemoryDisplay( QTableView ) :
         one row and the first byte of the next row.
         '''
         start_index = self.model().createIndex(
-            PC / MEM_TABLE_COLS,
-            PC % MEM_TABLE_COLS )
+            int( PC / MEM_TABLE_COLS ),
+            int( PC % MEM_TABLE_COLS ) )
         end_index = self.model().createIndex(
-            (PC+1) / MEM_TABLE_COLS,
-            (PC+1) % MEM_TABLE_COLS )
+            int( (PC+1) / MEM_TABLE_COLS ),
+            int( (PC+1) % MEM_TABLE_COLS ) )
         dbg = [start_index.row(),start_index.column()]
         dbg2 = [end_index.row(), end_index.column() ]
         '''
@@ -1264,7 +1264,7 @@ if __name__ == '__main__' :
     from binasm import binasm
 
     from PyQt5.QtWidgets import QApplication
-    args = []
+    args = [] # type: List[str]
     the_app = QApplication( args )
     reset_vm( binasm( '6955 6AAA 89A1 89A2 89A3 00FD' ) )
     #chip8.CALL_STACK = [516,532,564]
