@@ -59,7 +59,7 @@ The File>Load and File>Save commands are implemented in this module.
 See below for commentary.
 
 '''
-
+from typing import List
 import logging
 
 '''
@@ -998,7 +998,7 @@ class SourceWindow( QMainWindow ) :
     If assemble returns errors, construct and display a warning dialog
     and return None, else return the memory load from assembly.
     '''
-    def do_assembly( self ) -> bool :
+    def do_assembly( self ) -> List[int]  :
         first_block = self.document.firstBlock()
         '''
         Because we are about to (re) assemble, clear all breakpoints both
