@@ -87,13 +87,13 @@ class R( IntEnum ) :
     S = 18 # the time timer
     P = 19 # the PC
 
-REGS = {} # type Dict[ R, int ]
+REGS = {} # type: Dict[ int , int ]
 
 '''
 MEMORY is the 4096-byte emulated memory, stored as a list of ints.
 '''
 
-MEMORY = [] # type List[int]
+MEMORY = [] # type: List[int]
 
 '''
 MEMORY_CHANGED is a flag set during the only two instructions that can
@@ -108,7 +108,7 @@ manual (PDF in extras folder) page 36: the original call stack had 12 levels.
 '''
 
 MAX_CALL_DEPTH = 12
-CALL_STACK = [] # type List[int]
+CALL_STACK = [] # type: List[int]
 
 '''
 Define the two sets of font sprites. This is copied from Brad Miller's
@@ -158,7 +158,7 @@ machine is reset. In case, you know, you need to clear something.
 '''
 from typing import Callable
 
-NOTIFY_LIST = [] # type List[Callable]
+NOTIFY_LIST = [] # type: List[Callable]
 
 def reset_notify( callback : Callable ) -> None :
     global NOTIFY_LIST
@@ -253,7 +253,7 @@ def reset_vm( memload : List[int] = None ) -> None :
 Manage the breakpoint list. The Source module calls these entries as the user
 sets or clears breakpoints on source lines.
 '''
-BREAKPOINTS = [] # type List[int]
+BREAKPOINTS = [] # type: List[int]
 
 def bp_clear( ) -> None :
     global BREAKPOINTS
