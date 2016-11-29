@@ -109,13 +109,11 @@ class Statement():
     '''
     Call this method to initialize the Statement prior to a static scan.
     Clear fields set during the lexical scan, including any error.
-    Because this indicates editing, there will be an assembly later,
-    so clear the expr_error as well.
     '''
     def init_static( self ) :
         self.text_error = False
-        self.expr_error = False
-        self.error_msg = ''
+        if not self.expr_error :
+            self.error_msg = ''
         self.error_pos = None
         self.form = ''
         self.defined_name = ''
