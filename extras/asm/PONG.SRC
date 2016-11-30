@@ -1,7 +1,7 @@
-; Note: modified by David Cortesi 17 NOV 2016 to assemble with CHIP8IDE,
-; changing DRAW to DRAW, and the opcodes for storing BCD and storing
-; and loading to memory, and commenting out the OPTION directive.
-;
+; Note: modified by David Cortesi 17 NOV 2016 to assemble
+; with CHIP8IDE (change DRW to DRAW and the opcodes for
+; storing BCD and storing and loading to memory) and
+; commenting out the OPTION directive.
 ;
 ; Note: this source has been modified by David WINTER on 17 SEP 1997
 ;       (only the syntax changed: it has been converted in CHIPPER)
@@ -107,7 +107,7 @@ Padl_Loop:
 
     LD  V0, 31    ; Set V0 to max Y coord.  | These three lines are here to
     AND VB, V0    ; AND VB with V0          | adjust the paddle position if
-    DRAW VA, VB, 6 ; Draw left paddle        | it is out of the screen
+    DRAW VA, VB, 6 ; Draw left paddle       | it is out of the screen
 
     LD  V0, #0C ; Set V0 to KEY C
     SKNP V0     ; Skip next instruction if KEY in C is not pressed
@@ -119,7 +119,7 @@ Padl_Loop:
 
     LD  V0, 31    ; Set V0 to max Y coord.  | These three lines are here to
     AND VD, V0    ; AND VD with V0          | adjust the paddle position if
-    DRAW VC, VD, 6 ; Draw right paddle       | it is out of the screen
+    DRAW VC, VD, 6 ; Draw right paddle      | it is out of the screen
 
     LD  I, Ball   ; Get address of ball sprite
     DRAW V6, V7, 1 ; Draw ball
