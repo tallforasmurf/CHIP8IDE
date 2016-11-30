@@ -541,7 +541,7 @@ class RegisterModel( QAbstractTableModel ) :
             4: 'v4', 5: 'v5', 6: 'v6', 7: 'v7',
             8: 'v8', 9: 'v9', 10: 'vA', 11: 'vB',
             12: 'vC', 13: 'vD', 14: 'vE', 15: 'vF',
-            16: ' I', 17: ' T', 18: ' S', 19: 'PC'
+            16: ' I', 17: 'DT', 18: 'ST', 19: 'PC'
             }
 
     '''
