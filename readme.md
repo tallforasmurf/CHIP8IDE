@@ -173,7 +173,7 @@ You now have the tools to load, edit, run and debug CHIP-8 programs. In the `ext
 
 ## History
 
-The personal computer industry was born in the years 1974-77. In 1974, Intel announced the [8080 chip](https://en.wikipedia.org/wiki/Intel_8080). In Albuquerque, [Ed Roberts](https://en.wikipedia.org/wiki/Ed_Roberts_(computer_engineer\)) read about it, realized it could be the basis of a cheap minicomputer, and designed the [Altair 8800 kit](https://en.wikipedia.org/wiki/Altair_8800) around it. It was featured on the cover of the January 1975 issue of *Popular Electronics*.
+The personal computer industry was born in the years 1974-77. In 1974, Intel announced the [8080 chip](https://en.wikipedia.org/wiki/Intel_8080). In Albuquerque, [Ed Roberts](https://en.wikipedia.org/wiki/Ed_Roberts_\(computer_engineer\)) read about it, realized it could be the basis of a cheap minicomputer, and designed the [Altair 8800 kit](https://en.wikipedia.org/wiki/Altair_8800) around it. It was featured on the cover of the January 1975 issue of *Popular Electronics*.
 
 ----
 <img width='300px' src='http://www.computermuseum.20m.com/images/popelec/Title.jpg' />
