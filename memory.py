@@ -230,7 +230,7 @@ class InstPerTick( QSpinBox ) :
     def __init__( self, start_value:int ) -> None :
         super().__init__( None )
         self.setMinimum( 1 )
-        self.setMaximum( 500 )
+        self.setMaximum( 100 )
         self.setValue( start_value )
         self.setSingleStep( 1 )
 
