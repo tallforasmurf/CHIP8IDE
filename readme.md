@@ -209,9 +209,9 @@ Weisbecker set out to flatten the steep learning curve by designing a much simpl
 
 Weisbecker hoped that the CHIP-8 architecture and language were simple enough that users could get enjoyment out of creating simple game programs for the VIP. He first described CHIP-8 in the manual that shipped with the kit when it was released in 1977. (This manual is included in the `extras` folder.) A year later, an article by Weisbecker was published in *BYTE* magazine describing CHIP-8, including a sample game program. (A copy of this article is also in the `extras` folder.)
 
-The COSMAC VIP sold well enough to create an active community of users who kept in touch through a fanzine, *VIPer*, which published 39 issues between 1978 and 1984. You can read all the issues of *VIPer* at [Matthew Mikolai's Archive site](http://retro.mattmik.com/documents.html)
+The COSMAC VIP sold well enough to create an active community of users who kept in touch through a fanzine, *VIPer*, which published 39 issues between 1978 and 1984. You can read all the issues of *VIPer* at [Matthew Mikolai's Archive site](http://retro.mattmik.com/documents.html).
 
-Early issues of *VIPer* included articles by hobbyists who reverse-engineered the CHIP-8 emulator. In the process, they discovered several instructions that Weisbecker had not documented! (See the note at the end of the assembler reference document.)
+Early issues of *VIPer* included articles by hobbyists who reverse-engineered the CHIP-8 emulator. In the process, they discovered several instructions that Weisbecker had not documented!
 
 ### The HP-48 and SCHIP
 
@@ -221,7 +221,7 @@ In 1990, Hewlett-Packard released the [HP-48 Graphing Calculator](https://en.wik
 
 In 1991, [Erik Bryntse](http://www.hpcalc.org/authors/312) extended Gustafsson's emulator with instructions for scrolling the screen and support for higher-resolution character sprites. This extension became known as Superchip, or SCHIP. This extended version is supported by CHIP8IDE.
 
-### Undocumented Instructions
+### <a name='ND'></a> Undocumented Instructions
 
 There are three original sources of documentation for CHIP-8: the VIP manual, the BYTE article, and issue 1 of *VIPer*. All omit to mention three instructions which were supported by Weisenbecker's emulator code: shift-left, shift-right, and exclusive-or of machine registers.
 
@@ -231,7 +231,7 @@ At any rate, they were soon discovered by fans who reverse-engineered the 512-by
 
 Morrison's letter correctly describes the operation of the SHR and SHL instructions: the value from the source register, V*s*, is shifted and the result is placed in the target register V*t* (`Vt = Vs<<1` and `Vt = Vs>>1`).
 
-Somehow this became lost over time and an incorrect interpretation has propogated online which assumes that the value was shifted in-place (`Vt = Vt<<1` etc). This may have been because most programs that used the instructions *intended* for the shift to happen in-place, so they coded the same register number for V*t* and V*s* (e.g. `SL V5,V5`). At least two of the emulators I've looked at have this incorrect implementation, and CowGod's influential CHIP-8 Technical Reference also has it wrong.
+Somehow this became lost over time and an incorrect interpretation has propogated online which assumes that the value was shifted in-place (`Vs = Vs<<1` etc). This may have been because most programs that used the instructions *intended* for the shift to happen in-place, so they coded the same register number for V*t* and V*s* (e.g. `SL V5,V5`). At least two of the emulators I've looked at have this incorrect implementation, and CowGod's influential CHIP-8 Technical Reference also has it wrong.
 
 The correct interpretation of the shift instructions was clarified in a recent exchange at the [Yahoo VIP Group](https://groups.yahoo.com/neo/groups/rcacosmac/conversations/messages/328).
 
