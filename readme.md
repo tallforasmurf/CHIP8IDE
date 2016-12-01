@@ -243,13 +243,13 @@ You are welcome to read the code [on Github](https://github.com/tallforasmurf/CH
 
 These are the source modules in the order you might want to read them.
 
-* [chip8ide.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8ide.py) is the top level module. It sets up logging and the Qt environment, then loads all the other modules to initialize themselves.
+* [chip8ide.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8ide.py) is the top level module. It sets up logging and the Qt environment, loads all the other modules to initialize themselves, and starts the Qt Application event loop.
 
-* [chip8.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py) has the actual emulator. For reasons explained in the comments, it is written Pascal-style, with all subroutines first and the actual code to decode and execute a CHIP-8 instruction almost [a thousand lines in](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py#L1113).
+* [chip8.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py) has the actual emulator. For reasons explained in the comments, it is written Pascal-style, with all subroutines first. The actual code to decode and execute a CHIP-8 instruction appears almost [a thousand lines in](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py#L1113).
 
-* [source.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/source.py) implements the Edit window. It is mostly PyQt5 class definitions to implement the window and the widgets inside it, interesting only if you need to understand Qt. One key part is the Syntax Highlighter which is called after every single user edit action to check for form errors in the statement.
+* [source.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/source.py) implements the Edit window. It is mostly PyQt5 class definitions to implement the window and the widgets inside it, interesting only if you need to understand Qt. One key part is the Syntax Highlighter which is entered after every single user edit action to check for errors in the statement.
 
-* [assembler1.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/assembler1.py) inspects a line every time the user does an edit. It "tokenizes" the line and verifies that it makes sense as an assembler statement.
+* [assembler1.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/assembler1.py) inspects a line every time the user does an edit. It uses regular expressions to "tokenize" the line; then verifies that it makes sense as an assembler statement.
 
 * [assembler2.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/assembler2.py) is called when you click the LOAD button. It performs the actual assembly, converting opcodes and expressions into binary values.
 
@@ -257,9 +257,9 @@ These are the source modules in the order you might want to read them.
 
 * [display.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/display.py) implements the Display window with its emulated screen and keypad. Like `source.py` it is a whole lot PyQt5 class definitions.
 
-* [memory.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/memory.py) is the code that actually runs the emulator. The bulk of it is code to create and manage three Qt Tables, using Qt's MVC architecture, to display memory, the call stack, and the registers. Down at the bottom is the [asynchronous QThread](https://github.com/tallforasmurf/CHIP8IDE/blob/master/memory.py#L1031) that runs when you click the RUN button, so the CHIP-8 emulator can go full speed while Qt still handles mouse clicks and keyboard actions.
+* [memory.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/memory.py) is the code that actually runs the emulator. The bulk of it is code to create and manage three Qt Tables using Qt's Model-View architecture. The tables display memory, the call stack, and the registers. Down at the bottom is the [asynchronous QThread](https://github.com/tallforasmurf/CHIP8IDE/blob/master/memory.py#L1031) that runs when you click the RUN button, so the CHIP-8 emulator can go full speed while Qt still handles mouse clicks and keyboard actions.
 
-All this code is written in "literate" style, with a narrative about what the code is doing interspersed with the Python statements that actually do it. If you wonder why something is being done a certain way, there is probably a wordy boring explanation (or apology!) in the comments somewhere.
+All this code is written in "literate" style, with a narrative about what the code is doing interspersed with the Python statements that actually do it. If you wonder why something is being done a certain way, there is probably a long boring explanation (or an apology!) in the comments somewhere.
 
 ## <a name='SO'></a> Sources
 
@@ -275,6 +275,8 @@ The internet is just stuffed with information about the CHIP-8, including many w
 
 * [CowGod's CHIP-8 page](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM) is probably the most frequently cited internet reference, and covers both CHIP-8 and SCHIP features (but is incorrect on the shift instructions).
 
+* David Winter's [CHIP-8 emulation page](http://www.pong-story.com/chip8/) has a trove of CHIP-8 games and emulators.
+
 * [Mastering CHIP-8](http://mattmik.com/files/chip8/mastering/chip8.html), an essay by Matthew Mikolay, has a good technical description of the CHIP-8 but omits the SCHIP features.
 
 * [Matthew Mikolay's Retrocomputing page](http://retro.mattmik.com/) has documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*, in which can be found many CHIP-8 game listings.
@@ -288,8 +290,8 @@ archives](http://www.hpcalc.org/details/6735). The C source of CHIPPER
 is completely uncommented, but the CHIPPER.DOC file included with it has a
 good review of the instructions.
 
-David Winter created a CHIP-8 emulator for MS-DOS. His [CHIP-8
-page](http://www.pong-story.com/chip8/) has the source of Egeberg's CHIPPER, and the source and/or executable of a number of CHIP-8 and SCHIP games. Although the source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents the instruction set. I have used the games from this page as test vehicles and have included some of them in the `extras` folder.
+David Winter created a CHIP-8 emulator for MS-DOS. His CHIP-8
+page has the source of Egeberg's CHIPPER, and the source and/or executable of a number of CHIP-8 and SCHIP games. Although the source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents the instruction set. I have used the games from this page as test vehicles and have included some of them in the `extras` folder.
 
 Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is
 an elegantly coded CHIP-8 emulator in Python. I followed his method of dispatching decoded instructions. (But his does SHR/SHL incorrectly.)
