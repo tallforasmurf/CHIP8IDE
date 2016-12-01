@@ -148,7 +148,7 @@ Open again open the source program `draw_the_key.asm` and click LOAD and RUN. Th
 
 Click on the different keypad keys. Take note of the key layout, how the keys for `A` to `F` are wrapped around the decimal numbers.
 
-There are two ways to enter keypad clicks. You can click the keys with the mouse, or you can use keyboard keys from your computer. In the lower right of the display window is a pop-up menu. Each entry on the menu is a list of 16 keystrokes. These key*board* keys are mapped to the key*pad* keys of the display window. The default reads `1234qewradsfzxcv` which maps the CHIP-8 keypad keys from left to right and top to bottom, onto the keyboard keys
+There are two ways to enter keypad clicks. You can click the keys with the mouse, or you can use keyboard keys from your computer. In the lower right of the display window is a pop-up menu. Each entry on the menu is a list of 16 keystrokes. These key*board* keys are mapped to the key*pad* keys of the display window. The default reads `1234qewradsfzxcv`. When it is selected, it maps the CHIP-8 keypad keys, from left to right and top to bottom, onto the keyboard keys:
 
     1 2 3 4
      q w e r
@@ -157,11 +157,11 @@ There are two ways to enter keypad clicks. You can click the keys with the mouse
 
 In order for this to work, the Display window must have the "focus". Click on the edge of the window. Then type on those keyboard letters. The matching keypad keys should operate and the program should display the matching keypad letters.
 
-There are two other sets of keys in the pop-up menu. Or you can select Enter New Map from the menu, and then enter a list of 16 keys of your choice.
+There are two other lists of keys in the pop-up menu. Or you can select Enter New Map from the menu, and then enter a list of 16 keys of your choice.
 
 ### Single step and the Keypad
 
-Click STOP to hald the program (`draw_the_key.asm`) that is running. The next instruction is at #203, `LD V5, K`. This instruction tells the machine to wait until a key is pressed, then load its number into register V5, then wait until the key is released before going to the next instruction.
+Click STOP to halt the program (`draw_the_key.asm`) that is running. The next instruction is at #203, `LD V5, K`. This instruction tells the machine to wait until a key is pressed, then load its number into register V5, then wait until the key is released before going to the next instruction.
 
 Click the STEP button a few times. Nothing happens. The machine is waiting to find a key pressed. But you can't click on STEP and also click on a keypad key at the same time! So there is a problem trying to single-step through a load-keyboard instruction or any of the other instructions that test the keypad.
 
