@@ -617,7 +617,8 @@ class KeyChoiceCombo( QComboBox ) :
         Possibly we recorded the last list index in the settings?
         If not, default to 0.
         '''
-        self.setCurrentIndex( settings.value( 'display_page/map_index', 0 ) )
+        set_value = int( settings.value( 'display_page/map_index', 0 ) )
+        self.setCurrentIndex( set_value )
         '''
         Keep track of the last "real" index the user selected and the
         map string to which it corresponds.

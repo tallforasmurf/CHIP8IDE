@@ -826,7 +826,8 @@ class MasterWindow( QWidget ) :
         * The instructions/tick spinner, initialized to its saved
           previous value.
         '''
-        INST_PER_TICK = InstPerTick( SETTINGS.value( "memory_page/spinner", 10 ) )
+        set_value = int( SETTINGS.value( "memory_page/spinner", 10 ) )
+        INST_PER_TICK = InstPerTick( set_value )
         hbox.addWidget( INST_PER_TICK )
         hbox.addStretch( 10 )
         '''
