@@ -180,8 +180,8 @@ class Screen( QLabel ) :
         Create a place-holder QImage, which will shortly be replaced. At the
         time this __init__ runs, we have not been laid out. Soon we will come
         under control of an HBoxLayout, at which time our size will be set,
-        and a resizeEvent will be delivered. Then the resizeEvent handler
-        will redraw the QImage to fit the new size.
+        and a resizeEvent will be delivered. Then the resizeEvent() handler
+        below will recreate the QImage to fit the new size.
 
         One might think that since we only work in black and white, it would
         make sense to use QImage.Format_Monochrome or Format_Indexed8. Yeah,
@@ -198,6 +198,11 @@ class Screen( QLabel ) :
         used if it already exists.
         '''
         self.picasso = None # type: QPainter
+        '''
+        Set up a flag which is False while the emulator is free-running,
+        so we do not attempt to resize the display while there is an image
+        on it.
+        '''
         self.ok_to_resize = True
         '''
         Set the initial emulated screen mode to standard, 32x64. Initialize
@@ -207,8 +212,10 @@ class Screen( QLabel ) :
         self.extended_mode = False
 
     '''
-    Clear the emulated screen to black and update our pixmap contents.
-    Get rid of a QPainter if we have one.
+    Clear the emulated screen to black and update our pixmap contents. Get
+    rid of a QPainter if we have one. This is called as the last step of a
+    resize event to convert the resized QImage to a QPixmap, and whenever
+    the screen mode is changed.
     '''
     def clear( self ) -> None :
         self.image.fill( self.black_color )
@@ -1045,16 +1052,16 @@ if __name__ == '__main__' :
 
     pass
 
-    #from PyQt5.QtWidgets import QApplication
-    #args = []
-    #the_app = QApplication( args )
-    #settings = QSettings()
-    ###settings.clear()
-    #initialize(settings)
-    #OUR_WINDOW.show()
-    #sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
-    #draw_sprite( 16, 8, sprite )
-    #the_app.exec_()
+    from PyQt5.QtWidgets import QApplication
+    args = []
+    the_app = QApplication( args )
+    settings = QSettings()
+    ##settings.clear()
+    initialize(settings)
+    OUR_WINDOW.show()
+    sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
+    draw_sprite( 16, 8, sprite )
+    the_app.exec_()
 
     #url = QUrl( 'qrc:/330HzSQARE.wav' )
     #print('url',url.isValid() )
