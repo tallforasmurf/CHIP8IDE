@@ -180,8 +180,8 @@ class Screen( QLabel ) :
         Create a place-holder QImage, which will shortly be replaced. At the
         time this __init__ runs, we have not been laid out. Soon we will come
         under control of an HBoxLayout, at which time our size will be set,
-        and a resizeEvent will be delivered. Then the resizeEvent handler
-        will redraw the QImage to fit the new size.
+        and a resizeEvent will be delivered. Then the resizeEvent() handler
+        below will recreate the QImage to fit the new size.
 
         One might think that since we only work in black and white, it would
         make sense to use QImage.Format_Monochrome or Format_Indexed8. Yeah,
@@ -193,11 +193,12 @@ class Screen( QLabel ) :
         self.black_color = QColor( "black" )
         self.white_color = QColor( "white" )
         self.image.fill( self.black_color )
+        self.pixel_count = 0
         '''
-        Set up a slot for a QPainter which is created if necessary, or
-        used if it already exists.
+        Set up a flag which is False while the emulator is free-running,
+        so we do not attempt to resize the display while there is an image
+        on it.
         '''
-        self.picasso = None # type: QPainter
         self.ok_to_resize = True
         '''
         Set the initial emulated screen mode to standard, 32x64. Initialize
@@ -207,13 +208,14 @@ class Screen( QLabel ) :
         self.extended_mode = False
 
     '''
-    Clear the emulated screen to black and update our pixmap contents.
-    Get rid of a QPainter if we have one.
+    Clear the emulated screen to black and update our pixmap contents. Get
+    rid of a QPainter if we have one. This is called as the last step of a
+    resize event to convert the resized QImage to a QPixmap, and whenever
+    the screen mode is changed.
     '''
     def clear( self ) -> None :
         self.image.fill( self.black_color )
         self.setPixmap( QBitmap.fromImage( self.image ) )
-        self.picasso = None
 
     '''
     Get and set the screen mode, where True means SCHIP or extended mode.
@@ -248,16 +250,41 @@ class Screen( QLabel ) :
         hit = False
         P = self.P
         P2 = P >> 1
-        if self.picasso is None :
-            self.picasso = QPainter( self.image )
+        image_painter = QPainter( self.image )
+        pixel_painter = QPainter( self.pixmap() )
         for cx, cy in pixels :
+            '''
+            Convert CHIP-8 pixel to an image pixel upper left corner
+            '''
             px = cx * P
             py = cy * P
+            '''
+            Sample the image -- only QImage supports sampling a pixel --
+            to see if it was already white. Sample an image pixel at the
+            centerpoint of the square CHIP-8 pixel.
+            '''
             was_white = 0xff000000 != self.image.pixel( px + P2, py + P2 )
-            hit = hit or was_white # mypy doesn't dig hit |= was_white
+            '''
+            Record a hit if it was white. Note mypy doesn't dig "hit |= was_white"
+            '''
+            hit = hit or was_white
+            '''
+            New pixel will be the inverse color of the old one.
+            '''
             color = Qt.black if was_white else Qt.white
-            self.picasso.fillRect( px, py, P, P, color )
-        self.setPixmap( QBitmap.fromImage( self.image ) )
+            '''
+            Paint the CHIP-8 pixel's rectangle in both the image, so we
+            can sample it later, and in the pixmap that is displayed.
+            '''
+            image_painter.fillRect( px, py, P, P, color )
+            pixel_painter.fillRect( px, py, P, P, color )
+
+        '''
+        Because we paint directly on our displayed pixmap, Qt does not
+        know it should repaint us on the screen. So, tell it.
+        '''
+        self.update( )
+
         return hit
 
     '''
@@ -288,7 +315,6 @@ class Screen( QLabel ) :
         '''
         new_image = self.image.copy( new_rect )
         self.image = new_image
-        self.picasso = None
         self.setPixmap( QBitmap.fromImage( self.image ) )
 
     def scroll_right( self ) :
@@ -934,7 +960,6 @@ is starting.
 '''
 
 def change_of_thread( running=False ) -> None :
-    SCREEN.picasso = None
     SCREEN.ok_to_resize = not running
 
 '''
@@ -1045,16 +1070,16 @@ if __name__ == '__main__' :
 
     pass
 
-    #from PyQt5.QtWidgets import QApplication
-    #args = []
-    #the_app = QApplication( args )
-    #settings = QSettings()
-    ###settings.clear()
-    #initialize(settings)
-    #OUR_WINDOW.show()
-    #sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
-    #draw_sprite( 16, 8, sprite )
-    #the_app.exec_()
+    from PyQt5.QtWidgets import QApplication
+    args = []
+    the_app = QApplication( args )
+    settings = QSettings()
+    ##settings.clear()
+    initialize(settings)
+    OUR_WINDOW.show()
+    sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
+    draw_sprite( 16, 8, sprite )
+    the_app.exec_()
 
     #url = QUrl( 'qrc:/330HzSQARE.wav' )
     #print('url',url.isValid() )
