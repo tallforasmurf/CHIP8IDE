@@ -812,12 +812,14 @@ class DisplayWindow( QWidget ) :
 
     '''
     Override the built-in closeEvent() method to save our geometry and key
-    map in the settings.
+    map in the settings. Also, stop the sound effect.
     '''
     def closeEvent( self, event ) :
+        global SFX
         self.settings.setValue( "display_page/size", self.size() )
         self.settings.setValue( "display_page/position", self.pos() )
         self.key_mapper.shutdown( self.settings )
+        SFX.stop()
         super().closeEvent( event ) # pass it along
 
 '''

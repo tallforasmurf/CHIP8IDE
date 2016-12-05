@@ -210,5 +210,12 @@ logging.info( '{} shutting down at {}'.format( APPNAME, now.ctime() ) )
 logging.info( '==========================================' )
 
 '''
+Delay for just a little while to make sure all the garbage is picked
+up and Qt has really shut itself down.
+'''
+import time
+time.sleep( 0.1 )
+
+'''
 And that's that.
 '''
