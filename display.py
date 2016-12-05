@@ -193,11 +193,7 @@ class Screen( QLabel ) :
         self.black_color = QColor( "black" )
         self.white_color = QColor( "white" )
         self.image.fill( self.black_color )
-        '''
-        Set up a slot for a QPainter which is created if necessary, or
-        used if it already exists.
-        '''
-        self.picasso = None # type: QPainter
+        self.pixel_count = 0
         '''
         Set up a flag which is False while the emulator is free-running,
         so we do not attempt to resize the display while there is an image
@@ -220,7 +216,6 @@ class Screen( QLabel ) :
     def clear( self ) -> None :
         self.image.fill( self.black_color )
         self.setPixmap( QBitmap.fromImage( self.image ) )
-        self.picasso = None
 
     '''
     Get and set the screen mode, where True means SCHIP or extended mode.
@@ -255,16 +250,41 @@ class Screen( QLabel ) :
         hit = False
         P = self.P
         P2 = P >> 1
-        if self.picasso is None :
-            self.picasso = QPainter( self.image )
+        image_painter = QPainter( self.image )
+        pixel_painter = QPainter( self.pixmap() )
         for cx, cy in pixels :
+            '''
+            Convert CHIP-8 pixel to an image pixel upper left corner
+            '''
             px = cx * P
             py = cy * P
+            '''
+            Sample the image -- only QImage supports sampling a pixel --
+            to see if it was already white. Sample an image pixel at the
+            centerpoint of the square CHIP-8 pixel.
+            '''
             was_white = 0xff000000 != self.image.pixel( px + P2, py + P2 )
-            hit = hit or was_white # mypy doesn't dig hit |= was_white
+            '''
+            Record a hit if it was white. Note mypy doesn't dig "hit |= was_white"
+            '''
+            hit = hit or was_white
+            '''
+            New pixel will be the inverse color of the old one.
+            '''
             color = Qt.black if was_white else Qt.white
-            self.picasso.fillRect( px, py, P, P, color )
-        self.setPixmap( QBitmap.fromImage( self.image ) )
+            '''
+            Paint the CHIP-8 pixel's rectangle in both the image, so we
+            can sample it later, and in the pixmap that is displayed.
+            '''
+            image_painter.fillRect( px, py, P, P, color )
+            pixel_painter.fillRect( px, py, P, P, color )
+
+        '''
+        Because we paint directly on our displayed pixmap, Qt does not
+        know it should repaint us on the screen. So, tell it.
+        '''
+        self.update( )
+
         return hit
 
     '''
@@ -295,7 +315,6 @@ class Screen( QLabel ) :
         '''
         new_image = self.image.copy( new_rect )
         self.image = new_image
-        self.picasso = None
         self.setPixmap( QBitmap.fromImage( self.image ) )
 
     def scroll_right( self ) :
@@ -941,7 +960,6 @@ is starting.
 '''
 
 def change_of_thread( running=False ) -> None :
-    SCREEN.picasso = None
     SCREEN.ok_to_resize = not running
 
 '''
