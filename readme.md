@@ -3,15 +3,15 @@
 
 ## Introduction
 
-CHIP8IDE is a programming and execution environment based on the CHIP-8 and SCHIP-48 virtual machines.
+CHIP8IDE is an interactive development environment for writing programs that run on the CHIP-8 and SCHIP-48 virtual machines.
 
 CHIP-8 is a virtual machine that was designed for the COSMAC VIP, a microcomputer kit released in 1977. The purpose of CHIP-8 was to let hobbyists write game programs for their single-board computer without having to learn the details of the hardware.
 
-In the years since, many people have written emulators for the CHIP-8 so programs written for it could be run on modern hardware. This package contains not only an emulator for executing CHIP-8 code, but also tools for entry, editing, assembly, disassembly, and (most important) debugging CHIP-8 programs.
+In the years since, many people have written emulators for the CHIP-8 so programs written for it could be run on modern hardware. CHIP8IDE contains not only an emulator for executing CHIP-8 code, but also tools for entry, editing, assembly, disassembly, and debugging CHIP-8 programs.
 
 The CHIP-8 language is an *assembly language*, which means you program the hardware by writing individual machine instructions to manipulate binary values in the machine's registers and memory. To create output you write instructions that draw pixels on the screen. To get input you write instructions that read the state of the keypad buttons. You control the flow of execution by writing conditional jump instructions.
 
-The CHIP-8 machine has many fewer parts and instructions than a modern CPU, but the experience of writing code for it is very similar to writing assembly code for an Intel Core i7, an ARMv8, or a RISC-V. Learning to write and debug CHIP-8 code is excellent preparation for writing assembly code for a real machine.
+Although the CHIP-8 virtual machine has many fewer parts and instructions than a modern CPU, the experience of writing code for it is very similar to writing assembly code for a real CPU like the Intel Core i7, ARMv8, or RISC-V. Learning to write and debug CHIP-8 code is excellent preparation for writing assembly code for a real machine.
 
 The rest of this document has these parts:
 
@@ -41,35 +41,33 @@ There is a folder named `extras` included with CHIP8IDE. It contains binary and 
 
 When you start it, CHIP8IDE opens three independent windows, the Edit window, the Memory window, and the Display window.
 
-The Edit window contains a plain-text editor that you use to write or edit a CHIP-8 program. It supports all the usual editing keystrokes and operations. The Edit window also does syntax-checking and highlights any error statements. You can use the Edit window to set breakpoints so the machine stops when it reaches a certain statement. While you are single-stepping through a program, the Edit window highlights the source line that matches the next instruction to execute.
+The *Edit window* contains a plain-text editor that you use to write or edit a CHIP-8 program. It supports all the usual editing keystrokes and operations. The Edit window also does syntax-checking and highlights any error statements. You can use the Edit window to set breakpoints so the machine stops when it reaches a certain statement. While you are single-stepping through a program, the Edit window highlights the source line that matches the next instruction to execute.
 
-The Memory window displays the CHIP-8 machine memory and registers. It has the RUN/STOP button to start and stop execution, and a STEP button to execute a single instruction. When the machine is stopped you can see exactly what is in its memory and its registers. You can double-click on a memory byte or register and enter a new value in hexadecimal, and so alter the program or its execution.
+The *Memory window* displays the CHIP-8 machine memory and registers. It has the RUN/STOP button to start and stop execution, and a STEP button to execute a single instruction. When the machine is stopped you can see exactly what is in its memory and its registers. You can double-click on a memory byte or register and enter a new value in hexadecimal, and so alter the program or its execution.
 
-The Display window contains the emulated screen output of the program as an array of square pixels. It has 32x64 pixels in CHIP-8 mode, or 64x128 pixels in SCHIP mode. (The program sets the mode when it executes.)
+The *Display window* contains the emulated screen output of the program as an array of square pixels. It has 32x64 pixels in CHIP-8 mode, or 64x128 pixels in SCHIP mode. (The program sets the mode when it executes.)
 
 The Display window also presents the emulated 16-key keypad. When a program is running, it takes input from the keypad. The keys can be clicked with the mouse, or you can map keyboard keystrokes to the 16 keypad keys.
 
-You can change the size and position of the three windows. The program remembers these things and restores the same size and position when it starts again.
+You can change the sizes and positions of the three windows. On a smaller screen you may want to overlap the Edit window and the Display window, because you rarely use them at the same time. The program remembers the window sizes and positions and restores them when it starts again.
 
 ## <a name='ED'></a>Using the Editor
 
 You use the Editor to open programs, edit them, and load them into the emulated machine for execution.
 
-### Opening a program
+### Opening a source file
 
-Start CHIP8IDE and select the File>Open command. Navigate to the `extras` folder that is distributed with the program. Navigate inside it to the `asm` folder and open the file `draw_the_key.asm`. Now you are looking at a CHIP-8 program in source form. In another window open the `assembler_reference.pdf` file and read the text under the heading **Statements**. You can see examples of statements now in the Edit window.
+Start CHIP8IDE and select the File>Open command. Navigate to the `extras` folder that is distributed with the program. Navigate inside it to the `asm` folder and open the file `draw_the_key.asm`. Now you are looking at a CHIP-8 program in source form. It consists of assembler language statements, comments, and white-space.
 
-That was an example of opening a *source* file, a text file with assembly language statements. Now open a *binary* file, one that contains CHIP-8 instructions in their *assembled* form as binary bytes. Select File>Open. (If you have modified the `draw_the_key.asm` file, you are asked if you want to save it. Say no!)
-
-Navigate into the `binary` folder and open the file `heart_monitor.ch8`. Its contents appear in the Edit window but they look quite different from `draw_the_key.asm`. There are no readable comments or white space. This is a *disassembly*. Each time CHIP8IDE opens a file, it tests to see if the file is entirely text lines encoded Latin-1. If not, it assumes the file is a binary CHIP-8 executable file, one that contains only the binary bytes of a program from a CHIP-8 memory. (Many CHIP-8 programs on the internet are in this form.)
-
-CHIP8IDE *disassembles* the binary code, converting it back into assembly language source statements that define the same program, but can be read and edited. The comments in the disassembly show the original hexadecimal values of the instructions.
+In another window open the `assembler_reference.pdf` file and read the text under the heading **Statements**. You can see examples of statements now in the Edit window.
 
 ### Editing
 
-Once more use File>Open to open `draw_the_key.asm`. Experiment with the normal edit keys for your system. You will find that you can edit this text with the same keys and mouse moves you might use for NotePad on Windows, TextEdit on MacOS, or gedit on Linux. You can also select text and drag it, and you can drag text from other apps and drop it on this window.
+In the Edit window, experiment with the normal edit keys for your system. You will find that you can edit this text with the same keys and mouse moves you would use for NotePad on Windows, TextEdit on MacOS, or gedit on Linux.
 
-There is also a Find/Replace dialog that comes up when you key *control-f* (*command-f* on Mac). After you find something with the dialog you can use these keys:
+You can also select text and drag it, and you can drag text from other apps and drop it on this window. That means if you have a favorite editor, you can use it when writing a longer program. Then just select the program text and drag it into the Edit window.
+
+There is a Find/Replace dialog that comes up when you key *control-f* (*command-f* on Mac). After you find something with the dialog you can use these keys:
 
 * Find next: *control-g* (*command-g*)
 * Find previous: *shift-control-g* (*shift-command-g*)
@@ -78,33 +76,47 @@ There is also a Find/Replace dialog that comes up when you key *control-f* (*com
 
 ### Assembling and Errors
 
-Once more, open the file `draw_the_key.asm`. (Do not save if CHIP8IDE asks if you want to save the modified file!) Now click the LOAD button below the Edit window. This button tells CHIP8IDE to *assemble* the statements (convert them into their binary executable form) and load the result into the emulated memory. You may note that the display of memory in the Memory window has changed.
+If you have changed the file while you were experimenting, get a fresh copy by opening `draw_the_key.asm`. (Do not save if CHIP8IDE asks if you want to save the modified file!)
+
+Click the CHECK button below the Edit window. This button tells CHIP8IDE to *assemble* the statements (convert them into their binary executable form).
 
 Now that you have assembled the program, CHIP8IDE can show you its binary form in the Edit window. Using the mouse or the arrow keys, move to different lines of the program in the Edit window. The address of each instruction and its binary form are displayed in hexadecimal below the window.
 
-Let's make an error. On the first instruction, `LD I, QUERY`, change `LD` to `LX`. Hit the down-arrow to move to the next line. When the cursor leaves that line, the line turns red. This tells you it has some kind of error. Move the cursor back onto the line: below the window is the error message "Statement does not make sense".
+Let's make an error. On the first instruction, `LD I, QUERY`, change the opcode `LD` to `LX` which is not a recognized opcode. Hit the down-arrow to move to the next line. When the cursor leaves that line, the line turns red. The red colol tells you that statement has some kind of error.
 
-Change `LX` back to `LD` and move away from that line; it is no longer red. Go back and insert a plus sign after `QUERY` (`QUERY+`). Move away again; the line is red. Move back; the error message is "Invalid expression near 7". Put the cursor at the left margin and hit the right-arrow 7 times to see where the invalid expression begins.
+Move the cursor back onto the line. Below the window is the error message "Statement does not make sense". That is the general error statement whenever CHIP8IDE does not recognize some part of a statement. In this case it does not recognize `LX` as any sort of opcode or expression.
 
-Without fixing the error, click the LOAD button. You get an error dialog telling you there is a "format" error, that is, an error in the form of a statement. Fix the error by removing that plus sign, and click LOAD again. Now the assembly completes.
+Change `LX` back to `LD` and move away from that line; it is no longer red. Go back and insert a plus sign after `QUERY` so it reads `QUERY+`. Move away again; the line is red. Move back; the error message is "Invalid expression near 7". Put the cursor at the left margin and hit the right-arrow 7 times to see where the invalid expression begins.
+
+Without fixing the error, click the CHECK button. You get an error dialog telling you there is a "format" error, that is, an error in the format of some statement. Fix the error by removing that plus sign, and click CHECK again. Now the assembly completes.
 
 Some errors cannot be recognized while you are entering or editing statements. They are only found at assembly time. Near the bottom of the program, change the label `QUERY:` to read `QUERYX:` (or anything that is not `QUERY:`). Move the cursor away from that line: it is not red, so there is nothing wrong with the form of that statement or any other.
 
-Click the LOAD button and a message box tells you there is one "expression error" to correct. Click OK and note that the `LD I, QUERY` statement is now red. What could be wrong? Click in that line and you see the error message "Symbol 'QUERY' is undefined". This statement refers to a name `QUERY` that ought to be defined on some other line. But it isn't! This is an error that should be easy to fix. Fix it and click LOAD again to verify that the program is good.
+Click the CHECK button and a message box tells you there is one "expression error" to correct. Click OK, and note that the `LD I, QUERY` statement is now red. What could be wrong with it? Click in that line and you see the error message "Symbol 'QUERY' is undefined". This statement refers to a name `QUERY` that ought to be defined on some other line. But it isn't! This is an error that should be easy to fix. Fix it and click CHECK again to verify that the program is good.
 
-When there are multiple errors in a large program, you can use the key *control-e* (*command-e*). This makes the Editor skip to the next line that has an error.
+When you are writing a large program and CHECK reports errors, you can use the key *control-e* (*command-e*). This makes the Editor skip directly to the next line that has an error.
 
 The Edit window has one more useful key but it is explained in the next section.
 
+### Opening a binary file
+
+You have been working with a *source* file, a text file with assembly language statements and (usually) comments. Now open a *binary* file, one that contains only CHIP-8 instructions in their *assembled* form as binary bytes. Select File>Open. (If you have modified the `draw_the_key.asm` file, you are asked if you want to save it. Say no!)
+
+Navigate into the `binary` folder and open the file `heart_monitor.ch8`. Its contents appear in the Edit window, but they look quite different from the `draw_the_key.asm` source file. There are no readable comments or white space. This is a *disassembly*.
+
+Each time CHIP8IDE opens a file, it tests to see if the file is entirely text lines encoded Latin-1. If not, it assumes the file is a binary CHIP-8 executable file, one that contains only the binary bytes of a program from a CHIP-8 memory. Many CHIP-8 programs on the internet are in this form.
+
+CHIP8IDE *disassembles* the binary code, converting it back into assembly language source statements that define the same program, but can be read and edited. The comments in the disassembly show the original hexadecimal values of the instructions.
+
 ## <a name='EX'></a> Executing a program
 
-In the Edit window, load the binary program `heart_monitor.ch8` and click LOAD to assemble it and load it into memory. Look at the Memory window. The binary bytes of the program have been loaded into it.
+Let's run the `heart_monitor.ch8` program. Click the LOAD button. This assembles the program, as the CHECK button does, but it also loads the assembled bytes into memory. Look at the Memory window.
 
 ### Memory display
 
 The CHIP-8 machine has 4,096 bytes of memory. The Memory window shows it in a large scrolling table, 32 bytes per row. 
 
-The assembled program has been loaded starting at address `#200` (hexadecimal 200, decimal 512). This is a rule for CHIP-8 programs. In the original computer kit, the machine-language code of the *emulator*, the program that implemented the CHIP-8 language, was always loaded into the first 512 bytes of memory, from location #000 to #1FF. So a user program always started next, at #200. Today there is no emulator in those first 512 bytes (they are used instead to store the "sprites" for drawing letters and digits), but the convention remains that every program loads at #200 and begins executing there.
+The assembled program has been loaded starting at address `#200` (hexadecimal 200, decimal 512). This is a rule for CHIP-8 programs. In the original computer kit, the machine-language code of the *emulator*, the program that implemented the CHIP-8 language, was always loaded into the first 512 bytes of memory, from location `#000` to `#1FF`. So a user program always started at the next available byte, `#200`. Today there is no emulator in those first 512 bytes (they are used instead to store the "sprites" for drawing letters and digits), but the convention remains that every program loads at `#200` and begins executing there.
 
 ### Register display
 
@@ -124,9 +136,11 @@ The CHIP-8 machine has the following other registers:
 
 There is a small numeric field in the lower right of the Memory window. This is the "instructions per tick" counter. CHIP8IDE controls how many CHIP-8 instructions can execute in one "tick" (one-sixtieth of a second). Set this value to 10 for now.
 
-Click the RUN! button. The program begins to execute. Its output is on the display window and it also makes beeping noises. Click STOP to stop it. Note the changes in the contents of the machine registers. Whenever you stop the machine, the instruction pointed to by the PC is highlighted in memory, and the matching source statement is highlighted in the Edit window.
+Click the RUN! button. The program begins to execute. Its output is on the display window and it also makes beeping noises. (Move the Display window so you can see it, if it is covered up.)
 
-Start and stop the program several times. This program spends quite a bit of time in a subroutine. When CHIP-8 executes a `CALL` instruction, the `PC` value is pushed on the Call Stack. That shows where control will return when a `RET` is executed. Depending on where you stop this program, you may see a return address on the Call Stack display.
+Click STOP to stop the program. Whenever you stop the machine, the instruction pointed to by the PC is highlighted in memory, and the matching source statement is highlighted in the Edit window.
+
+Start and stop the program several times. Note the changes in the contents of the machine registers each time. This program spends quite a bit of time in a subroutine. When CHIP-8 executes a `CALL` instruction, the `PC` value is pushed on the Call Stack. That shows where control will return when a `RET` is executed. Depending on where you stop this program, you may see a return address on the Call Stack display.
 
 Start the program running and change the value in the inst/tick field. The more instructions you let it execute, the faster it seems to go. Slow it down to 1/tick. (Our patient is getting worse!) Somewhere around 10 to 15 is roughly the speed of the original VIP.
 
@@ -134,9 +148,9 @@ Start the program running and change the value in the inst/tick field. The more 
 
 Stop the program and then repeatedly click the STEP button. Each click executes just one CHIP-8 instruction. Note the register values changing, and how the current line in the Edit window follows along. This is one way to understand a strange program: step through its logic one instruction at a time.
 
-In the edit window, click on the `RET` instruction just above `LBL0256:`. Set a breakpoint by keying *control-b* (*command-b* on Mac). Click on another line and you see that this line now has a violet color, indicating it is a breakpoint.
+In the edit window, find the `RET` instruction just above `LBL0256:` and click on it. Set a breakpoint by keying *control-b* (*command-b* on Mac). Click on another line and you see that this line now has a violet color, indicating it is a breakpoint.
 
-Click RUN. The program stops immediately, and now the status line reads "Breakpoint on 00EE at 0254". Click RUN several times and note how the registers and the Call Stack display change. This subroutine is called from two locations, sometimes from #224 and sometimes #21A.
+Click RUN. The program stops immediately, and now the status line reads "Breakpoint on 00EE at 0254". Click RUN several times. Each time the program begins to run until it once again hits the breakpoint you set. Note how the registers and the Call Stack display change. You can tell this subroutine is called from two locations, sometimes from #224 and sometimes #21A.
 
 You can set as many breakpoints as you like. However, all breakpoints are cleared when click the LOAD button in the Edit window (because it reassembles the program).
 
@@ -146,7 +160,7 @@ There is one more thing to know about single step execution but it will be cover
 
 Open again open the source program `draw_the_key.asm` and click LOAD and RUN. This tiny program reads the next keypad key and displays that character, from `0` to `F`, on the screen.
 
-Click on the different keypad keys. Take note of the key layout, how the keys for `A` to `F` are wrapped around the decimal numbers.
+Click on the different keypad keys. The program displays the key value. Take note of the key layout, how the keys for `A` to `F` are wrapped around the decimal numbers.
 
 There are two ways to enter keypad clicks. You can click the keys with the mouse, or you can use keyboard keys from your computer. In the lower right of the display window is a pop-up menu. Each entry on the menu is a list of 16 keystrokes. These key*board* keys are mapped to the key*pad* keys of the display window. The default reads `1234qewradsfzxcv`. When it is selected, it maps the CHIP-8 keypad keys, from left to right and top to bottom, onto the keyboard keys:
 
@@ -161,9 +175,9 @@ There are two other lists of keys in the pop-up menu. Or you can select Enter Ne
 
 ### Single step and the Keypad
 
-Click STOP to halt the program (`draw_the_key.asm`) that is running. The next instruction is at #203, `LD V5, K`. This instruction tells the machine to wait until a key is pressed, then load its number into register V5, then wait until the key is released before going to the next instruction.
+Click STOP to halt the program (`draw_the_key.asm`) that is running. The next instruction is at #203, `LD V5, K`. This instruction tells the machine to wait until a key is pressed, then load its number into register `V5`, then wait until the key is released before going to the next instruction.
 
-Click the STEP button a few times. Nothing happens. The machine is waiting to find a key pressed. But you can't click on STEP and also click on a keypad key at the same time! So there is a problem trying to single-step through a load-keyboard instruction or any of the other instructions that test the keypad.
+Click the STEP button a few times. Nothing happens. The machine is waiting to find a key pressed. But you can't click on STEP and also click on a keypad key at the same time! So there is a problem trying to single-step through a load-keyboard instruction or any other instruction that tests the keypad.
 
 This is solved by "latching" a key. Go to the Display window and *shift-click* on a key, for example hold the Shift key and click on the D key. The key is highlighted and remains highlighted afterward. It is "latched down" and will remain pressed until the machine samples it.
 
@@ -193,7 +207,7 @@ Two months later, June 1975, [Steve Wozniak](https://en.wikipedia.org/wiki/Steve
 
 Meanwhile on the East Coast, the RCA Corporation had developed a series of microprocessor chips, largely under the direction of a multi-talented engineer named [Joseph Weisbecker](http://cosmacelf.com/history/joseph-weisbecker.html). In 1976 RCA released the [1802](https://en.wikipedia.org/wiki/RCA_1802), a CPU with a different manufacturing process and architecture that RCA called "complementary symmetry monolithic array computer", or COSMAC. (The 1802 is still manufactured today for use in high-reliability embedded systems.)
 
-Weisbecker, who had designed a number of prior game and hobby boards, now designed a new single-board hobby kit around this CPU and called it the COSMAC VIP.
+Weisbecker, who had already designed a number of game and hobby boards, now designed a new single-board hobby kit around this CPU and called it the COSMAC VIP.
 
 ----
 
@@ -203,15 +217,13 @@ Weisbecker, who had designed a number of prior game and hobby boards, now design
 
 ----
 
-Weisbecker realized that hobbyists could not be expected to begin programming the kit in 1802 machine language, especially when, first, the only means of entering code was to key in hexadecimal digits with the keypad, and second, the only means of output was to write binary commands to the separate chip that controlled the television interface.
+Weisbecker realized that hobbyists could not be expected to begin programming the kit in 1802 machine language. First, the only means of entering code was to key in hexadecimal digits with the keypad, and second, the only means of output was to write binary commands to the separate chip that controlled the television interface.
 
 Weisbecker set out to flatten the steep learning curve by designing a much simpler virtual machine that he dubbed CHIP-8. The CHIP-8 machine was still programmed by entering machine instructions as hexadecimal digits, but it had many fewer and simpler instructions than a "real" microprocessor. Most important, it had single instructions for reading the keypad and for writing a pattern of pixels, called a "sprite", onto the screen.
 
 Weisbecker hoped that the CHIP-8 architecture and language were simple enough that users could get enjoyment out of creating simple game programs for the VIP. He first described CHIP-8 in the manual that shipped with the kit when it was released in 1977. (This manual is included in the `extras` folder.) A year later, an article by Weisbecker was published in *BYTE* magazine describing CHIP-8, including a sample game program. (A copy of this article is also in the `extras` folder.)
 
-The COSMAC VIP sold well enough to create an active community of users who kept in touch through a fanzine, *VIPer*, which published 39 issues between 1978 and 1984. You can read all the issues of *VIPer* at [Matthew Mikolai's Archive site](http://retro.mattmik.com/documents.html).
-
-Early issues of *VIPer* included articles by hobbyists who reverse-engineered the CHIP-8 emulator. In the process, they discovered several instructions that Weisbecker had not documented!
+The COSMAC VIP sold well enough to create an active community of users who kept in touch through a fanzine, *VIPer*, which published 39 issues between 1978 and 1984. You can read all the issues of *VIPer* at [Matthew Mikolai's Archive site](http://retro.mattmik.com/documents.html). They contain a number of contributed programs for the VIP.
 
 ### The HP-48 and SCHIP
 
@@ -237,7 +249,7 @@ The correct interpretation of the shift instructions was clarified in a recent e
 
 ## <a name='PY'></a> CHIP8IDE Design
 
-This app is written in Python 3 and uses the PyQt5 and Qt5.7 packages for its user interface. All functions and global variables have PEP 484 type hints and the program has been checked by the mypy type hint checker.
+This app is written in Python 3 and uses the PyQt5 and Qt5.x packages for its user interface. All functions and global variables have PEP 484-style type hints and the program has been checked by the mypy type hint checker.
 
 You are welcome to read the code [on Github](https://github.com/tallforasmurf/CHIP8IDE). If you see a way to improve it, by all means enter a pull request!
 
@@ -245,13 +257,13 @@ These are the source modules in the order you might want to read them.
 
 * [chip8ide.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8ide.py) is the top level module. It sets up logging and the Qt environment, loads all the other modules to initialize themselves, and starts the Qt Application event loop.
 
-* [chip8.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py) has the actual emulator. For reasons explained in the comments, it is written Pascal-style, with all subroutines first. The actual code to decode and execute a CHIP-8 instruction appears almost [a thousand lines in](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py#L1113).
+* [chip8.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py) has the actual emulator. For reasons explained in the comments, it is written "Pascal-style", with all subroutines first. The actual code to decode and execute a CHIP-8 instruction appears almost [a thousand lines in](https://github.com/tallforasmurf/CHIP8IDE/blob/master/chip8.py#L1113).
 
 * [source.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/source.py) implements the Edit window. It is mostly PyQt5 class definitions to implement the window and the widgets inside it, interesting only if you need to understand Qt. One key part is the Syntax Highlighter which is entered after every single user edit action to check for errors in the statement.
 
 * [assembler1.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/assembler1.py) inspects a line every time the user does an edit. It uses regular expressions to "tokenize" the line; then verifies that it makes sense as an assembler statement.
 
-* [assembler2.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/assembler2.py) is called when you click the LOAD button. It performs the actual assembly, converting opcodes and expressions into binary values.
+* [assembler2.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/assembler2.py) is called when you click CHECK or LOAD. It performs the actual assembly, converting opcodes and expressions into binary values.
 
 * [disassemble.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/disassemble.py) performs the disassembly of a binary file. It is interesting to compare this to `chip8.py`; they both decode the same binary instruction values, one to execute them and one to convert them to source.
 
@@ -265,7 +277,7 @@ All this code is written in "literate" style, with a narrative about what the co
 
 The internet is just stuffed with information about the CHIP-8, including many well-written CHIP-8 emulators. These are some of the sources I read and stole ideas from:
 
-* [CHIP-8 on Wikipedia](https://en.wikipedia.org/wiki/CHIP-8) with overview and links.
+* CHIP-8 [article on Wikipedia](https://en.wikipedia.org/wiki/CHIP-8) with overview and links.
 
 * The [COSMAC VIP page](http://www.oldcomputers.net/rca-cosmac-vip.html) at OldComputers.net has good pictures of the original machine.
 
@@ -279,7 +291,7 @@ The internet is just stuffed with information about the CHIP-8, including many w
 
 * [Mastering CHIP-8](http://mattmik.com/files/chip8/mastering/chip8.html), an essay by Matthew Mikolay, has a good technical description of the CHIP-8 but omits the SCHIP features.
 
-* [Matthew Mikolay's Retrocomputing page](http://retro.mattmik.com/) has documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*, in which can be found many CHIP-8 game listings.
+* [Matthew Mikolay's Retrocomputing page](http://retro.mattmik.com/) has documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*.
 
 * [*VIPer* issue 1](http://www.mattmik.com/files/viper/Volume1Issue01.pdf) has a lengthy review of the CHIP-8 instructions with a tutorial.
 
@@ -300,7 +312,7 @@ an elegantly coded CHIP-8 emulator in Python. I followed his method of dispatchi
 [CHIP-8/SCHIP emulator in C++](https://github.com/mudlord/maxe)
 which I have consulted. (It too has the SHR/SHL instructions wrong.)
 
-Jeffrey Bian wrote [MOCHI-8](http://mochi8.weebly.com/), a CHIP-8 assembler, disassembler, and emulator, all in Java. The assembler is notably advanced over CHIPPER, supporting forward references to labels and complex expressions. I have followed his assembly language syntax, and I referred to his code and documentation in creating the assembler and disassembler in this project. (But his emulator also has the SHL/SHR instructions wrong.)
+Jeffrey Bian wrote [MOCHI-8](http://mochi8.weebly.com/), a CHIP-8 assembler, disassembler, and emulator, all in Java. I have followed his assembly language syntax, and I referred to his code and documentation in creating the assembler and disassembler in this project. (But his emulator also has the SHL/SHR instructions wrong.)
 
 Github user "mir3z" has a [JavaScript CHIP-8 emulator](https://github.com/mir3z/chip8-emu) which I did not actually read. However, the [rom folder](https://github.com/mir3z/chip8-emu/tree/master/roms) at that site is stuffed with many S/CHIP-8 executable files.
 
