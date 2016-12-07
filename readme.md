@@ -3,13 +3,13 @@
 
 ## Introduction
 
-CHIP8IDE is an interactive development environment for writing programs that run on the CHIP-8 and SCHIP-48 virtual machines.
+CHIP8IDE is an interactive development environment used to write programs for the CHIP-8 virtual machine.
 
-CHIP-8 is a virtual machine that was designed for the COSMAC VIP, a microcomputer kit released in 1977. The purpose of CHIP-8 was to let hobbyists write game programs for their single-board computer without having to learn the details of the hardware.
+CHIP-8 is a virtual machine architecture that was designed for a microcomputer kit released in 1977. The purpose of CHIP-8 was to let hobbyists write game programs for their single-board kit computer without having to learn the details of the hardware.
 
-In the years since, many people have written emulators for the CHIP-8 so programs written for it could be run on modern hardware. CHIP8IDE contains not only an emulator for executing CHIP-8 code, but also tools for entry, editing, assembly, disassembly, and debugging CHIP-8 programs.
+In the years since, many people have written emulators for the CHIP-8 so programs written for it could run on modern hardware. CHIP8IDE contains an emulator for executing CHIP-8 code, but it also offers tools for entry, editing, assembly, disassembly, and debugging CHIP-8 programs.
 
-The CHIP-8 language is an *assembly language*, which means you program the hardware by writing individual machine instructions to manipulate binary values in the machine's registers and memory. To create output you write instructions that draw pixels on the screen. To get input you write instructions that read the state of the keypad buttons. You control the flow of execution by writing conditional jump instructions.
+The CHIP-8 machine is programmed using an *assembly language*. That means you program the hardware by writing individual machine instructions to manipulate binary values in the machine's registers and memory. To create output you write instructions that draw pixels on the screen. To get input you write instructions that read the state of the keypad buttons. You control the flow of execution by writing conditional jump instructions.
 
 Although the CHIP-8 virtual machine has many fewer parts and instructions than a modern CPU, the experience of writing code for it is very similar to writing assembly code for a real CPU like the Intel Core i7, ARMv8, or RISC-V. Learning to write and debug CHIP-8 code is excellent preparation for writing assembly code for a real machine.
 
@@ -57,9 +57,9 @@ You use the Editor to open programs, edit them, and load them into the emulated 
 
 ### Opening a source file
 
-Start CHIP8IDE and select the File>Open command. Navigate to the `extras` folder that is distributed with the program. Navigate inside it to the `asm` folder and open the file `draw_the_key.asm`. Now you are looking at a CHIP-8 program in source form. It consists of assembler language statements, comments, and white-space.
+Start CHIP8IDE and select the File>Open command. Navigate to the `extras` folder that is distributed with the program. Navigate inside it to the `source` folder and open the file `draw_the_key.asm`. Now you are looking at a short CHIP-8 program in its source form. It consists of assembler language statements, comments, and white-space.
 
-In another window open the `assembler_reference.pdf` file and read the text under the heading **Statements**. You can see examples of statements now in the Edit window.
+In the `docs` folder find the `assembler_reference.pdf` file and open it in another window. Read the text under the heading **Statements**. You can see examples of statements now in the Edit window.
 
 ### Editing
 
