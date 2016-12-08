@@ -510,12 +510,16 @@ class RegisterDisplay( QTableView ) :
         self.setSelectionMode( QAbstractItemView.SingleSelection )
         '''
         Try to get Qt to give the table appropriate space, using
-        manual tweaks of various properties - yechhh.
+        manual tweaks of various properties - yechhh. Hey, if anybody
+        wants to fix this so the register display sizes itself appropriately
+        without these tweaks, puh-leeeze put in a pull request!
         '''
-        self.setMinimumWidth(MONOFONT_METRICS.width( '00FF' * 22 ) )
-        self.setMaximumHeight( MONOFONT_METRICS.lineSpacing() * 3.5 )
+        import sys
+        minw = 24 if sys.platform.startswith('win') else ( 22 if sys.platform.startswith('dar') else 20 ) 
+        self.setMinimumWidth(MONOFONT_METRICS.width( '00FF' * minw ) )
+        self.setMaximumHeight( MONOFONT_METRICS.lineSpacing() * 4 )
         self.setSizePolicy(
-            QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Preferred )
+            QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
             )
         '''
         Instantiate the model and connect it to this view.
