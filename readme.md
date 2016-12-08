@@ -13,6 +13,8 @@ The CHIP-8 machine is programmed using an *assembly language*. That means you pr
 
 Although the CHIP-8 virtual machine has many fewer parts and instructions than a modern CPU, the experience of writing code for it is very similar to writing assembly code for a real CPU like the Intel Core i7, ARMv8, or RISC-V. Learning to write and debug CHIP-8 code is excellent preparation for writing assembly code for a real machine.
 
+You can download self-contained executables of CHIP8IDE for Ubuntu, MacOS and Windows 7 [at this link](https://www.dropbox.com/sh/7kziw5udl2icctb/AABzoqtB2ORA3Z9ckTPRWJZna?dl=0).
+
 There is a folder named `extras` included with CHIP8IDE. It contains binary and source programs, and these useful documents:
 
 * `An_Easy_Programming_System.pdf` was a magazine article by the designer of CHIP-8. It clearly explains how the designer meant CHIP-8 to be used.
