@@ -854,8 +854,11 @@ class SourceWindow( QMainWindow ) :
         It has to exist now because as soon as we create the editor,
         the cursor_moved function will try to reference it.
         '''
-        self.status_line = QLabel()
+        self.status_line = QLineEdit()
+        self.status_line.setReadOnly( True )
         self.status_line.setFont( MONOFONT )
+        self.status_line.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum )
+        self.status_line.setMinimumWidth( MONOFONT_METRICS.width( 'M'*30 ) )
 
         '''
         Create a flag that shows whether the current source has been
@@ -891,8 +894,7 @@ class SourceWindow( QMainWindow ) :
         to the right of a status display.
         '''
         hbox = QHBoxLayout()
-
-        hbox.addWidget( self.status_line, 10, Qt.AlignLeft )
+        hbox.addWidget( self.status_line, 2, Qt.AlignLeft )
 
         self.check_button = RSSButton()
         self.check_button.setText( 'CHECK' )
