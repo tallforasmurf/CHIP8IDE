@@ -30,7 +30,7 @@ This is a sub-module of the source.py module, which implements the source
 editor window.
 
 The code here implements the final assembly of the Statement objects
-into binary values, and the disassembly of a byte string into legal assembler.
+into binary values.
 
 The assemble() function is called from source.py when the Check or Load
 button is clicked. The user should not, but might, click Check while there
