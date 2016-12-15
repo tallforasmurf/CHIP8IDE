@@ -1001,7 +1001,12 @@ class SourceWindow( QMainWindow ) :
     and return None, else return the memory load from assembly.
     '''
     def do_assembly( self ) -> List[int]  :
-        first_block = self.document.firstBlock()
+        '''
+        Clear the status line on the presumption that any error will
+        have been fixed.
+        '''
+        self.status_line.clear()
+
         '''
         Because we are about to (re) assemble, clear all breakpoints both
         from the emulator and from any statements that have them. We have to
@@ -1009,6 +1014,7 @@ class SourceWindow( QMainWindow ) :
         still be here (unlike File>New or >Open where we know all existing
         statements will be erased).
         '''
+        first_block = self.document.firstBlock()
         next_block = first_block
         while next_block.isValid():
             self.editor.clear_bp_status( next_block )
