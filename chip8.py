@@ -46,6 +46,7 @@ __all__ = [
     'bp_add',       # add breakpoint
     'bp_rem',       # remove breakpoint
     'bp_clear',     # clear breakpoints
+    'reset_anticipation', # register to anticipate reset
     'reset_notify', # register a callback for memory reset
     'memory_notify', # register a callback for memory change
     'initialize',   # do some startup TBS
@@ -147,24 +148,13 @@ FONT_8x10 = [
 ]
 
 '''
-Store a list of 0 or more callables to be called when the emulated
-machine is reset. In case, you know, you need to clear something.
-'''
-from typing import Callable
-
-RESET_NOTIFY_LIST = [] # type: List[Callable]
-
-def reset_notify( callback : Callable ) -> None :
-    global RESET_NOTIFY_LIST
-    RESET_NOTIFY_LIST.append( callback )
-
-'''
 Store a list of 0 or more (usually 1) callables to be called when
 the emulated memory is changed by a STM or STD instruction. Used
 from memory.py when a more baroque method failed. If chip8 was any
 kind of Qt class, it could actually issue signals for these two
 conditions, but it isn't and I don't want it to be.
 '''
+from typing import Callable
 
 MEMORY_NOTIFY_LIST = [] # type: List[Callable]
 
@@ -172,12 +162,39 @@ def memory_notify( callback : Callable ) -> None :
     global MEMORY_NOTIFY_LIST
     MEMORY_NOTIFY_LIST.append( callback )
 
+'''
+Store a list of 0 or more callables to be called when the emulated
+machine is about to reset. In case, you know, you want to stop a
+running thread or something.
+'''
+
+RESET_COMING_LIST = [] # type: List[Callable]
+
+def reset_anticipation( callback: Callable ) -> None :
+    global RESET_COMING_LIST
+    RESET_COMING_LIST.append( callback )
+
+'''
+Store a list of 0 or more callables to be called when the emulated
+machine has finished resetting. In case you want to update a display.
+'''
+
+RESET_HAPPENED_LIST = [] # type: List[Callable]
+
+def reset_notify( callback : Callable ) -> None :
+    global RESET_HAPPENED_LIST
+    RESET_HAPPENED_LIST.append( callback )
+
+'''
+Call the callables in a possibly empty list. Don't trust them.
+'''
+
 def do_notify( callback_list : List[Callable] ) -> None :
     for callable in callback_list :
         try:
             callable( )
         except Exception as E:
-            pass
+            logging.ERROR( 'Exception in callback' ) # never happen
 
 '''
 Reset the virtual machine to starting condition:
@@ -210,9 +227,14 @@ from typing import List
 
 def reset_vm( memload : List[int] = None ) -> None :
 
-    global MEMORY,REGS, CALL_STACK, RESET_NOTIFY_LIST
+    global MEMORY,REGS, CALL_STACK
 
     logging.debug( 'Reset emulated machine' )
+
+    '''
+    Call anybody who wants to anticipate this event.
+    '''
+    do_notify( RESET_COMING_LIST )
 
     '''
     Clear the call stack.
@@ -255,9 +277,9 @@ def reset_vm( memload : List[int] = None ) -> None :
         MEMORY[ 0x0200 : 0x01FF + len( memload ) ] = memload
 
     '''
-    If anyone cares, let them know we are changed.
+    If anyone cares, let them know we are done changing.
     '''
-    do_notify( RESET_NOTIFY_LIST )
+    do_notify( RESET_HAPPENED_LIST )
 
 '''
 Manage the breakpoint list. The Source module calls these entries as the user

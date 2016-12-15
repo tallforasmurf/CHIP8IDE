@@ -515,7 +515,7 @@ class RegisterDisplay( QTableView ) :
         without these tweaks, puh-leeeze put in a pull request!
         '''
         import sys
-        minw = 24 if sys.platform.startswith('win') else ( 22 if sys.platform.startswith('dar') else 20 ) 
+        minw = 24 if sys.platform.startswith('win') else ( 22 if sys.platform.startswith('dar') else 20 )
         self.setMinimumWidth(MONOFONT_METRICS.width( '00FF' * minw ) )
         self.setMaximumHeight( MONOFONT_METRICS.lineSpacing() * 4 )
         self.setSizePolicy(
@@ -840,9 +840,10 @@ class MasterWindow( QWidget ) :
         '''
         self.setFocusPolicy( Qt.ClickFocus )
         '''
-        Register a callback with the emulator to be notified when
-        the vm is reset.
+        Register callbacks with the emulator to be notified when
+        the will reset and when it has.
         '''
+        chip8.reset_anticipation( self.reset_coming )
         chip8.reset_notify( self.reset_display )
         '''
         With all widgets created, resize and position the window
@@ -918,7 +919,7 @@ class MasterWindow( QWidget ) :
             THREAD_MUTEX.lock()
             '''
             * Make the button read RUN again
-            * Put the emulator status in the status lin
+            * Put the emulator status in the status line
             * Re-enable and update the various tables.
             * Release the mutex
             '''
@@ -928,41 +929,32 @@ class MasterWindow( QWidget ) :
             THREAD_MUTEX.unlock()
 
     '''
-    When the vm is reset, #1, STOP THE EMULATOR. Then, make all the tables
-    update.
+    When the vm is going to reset, #1, STOP THE EMULATOR.
+    '''
+    def reset_coming( self ) :
+        if RUN_STOP_BUTTON.isChecked() :
+            '''
+            The button is in the checked state, meaning the emulator is
+            running. Simulate a user click to force it to unchecked state,
+            which will emit the signal that will call run_stop_click() above.
+            It in turn will call end_resets() to update displays.
+            '''
+            RUN_STOP_BUTTON.click()
+            '''
+            Now kill a little time to make sure that all happens.
+            '''
+            QTest.qWait(5)
 
-    Because the free-running emulator is in another thread, there is a big
-    fat race condition if the user hits LOAD on the source window while
-    emulation is going on. That calls chip8.reset_vm() which zeros memory
-    and registers, maybe reloads memory, all while possibly simultaneously
-    the Run thread is calling into the chip8.step() function. Well, the worst
-    that can happen is, step() will see an error e.g. from trying to decode
-    a bunch of zero bytes, and the Run thread will stop on its own.
-
-    The real race condition is between that happening, which will make
-    the Run thread call RUN_STOP_BUTTON.click(), and our doing the same
-    thing from here.
+    '''
+    When the VM has completed resetting, make all the tables update.
+    Also, clear the status line.
     '''
     def reset_display( self ) :
         global MEMORY_UPDATE_NEEDED
         MEMORY_UPDATE_NEEDED = True # we do want the memory table updated
-
-        if RUN_STOP_BUTTON.isChecked() :
-            '''
-            The button is in the checked state, meaning the emulator is
-            running. Simulate a user click to force it to unchecked state
-            and emit the signal that will call run_stop_click() above.
-            It in turn will call end_resets() to update displays.
-            '''
-            RUN_STOP_BUTTON.click()
-        else :
-            '''
-            The emulator is not actively running. However, owing to the
-            chip8.reset_vm call, the memory and register displays should be
-            refreshed, so make that happen.
-            '''
-            self.begin_resets()
-            self.end_resets()
+        self.begin_resets()
+        self.end_resets()
+        STATUS_LINE.clear()
 
     '''
     Tell our attached display widgets that their underlying data will
