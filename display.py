@@ -208,14 +208,23 @@ class Screen( QLabel ) :
         '''
         self.P = int( self.minimumHeight() / 32 )
         self.extended_mode = False
+        '''
+        Store QPaint devices here. They are used as long as possible, but
+        trashed whenever a change of thread occurs, see change_of_thread
+        and clear().
+        '''
+        self.image_painter = None # type: QPainter
+        self.pixel_painter = None # type: QPainter
 
     '''
     Clear the emulated screen to black and update our pixmap contents. Get
-    rid of a QPainter if we have one. This is called as the last step of a
+    rid of QPainters if we have any. This is called as the last step of a
     resize event to convert the resized QImage to a QPixmap, and whenever
     the screen mode is changed.
     '''
     def clear( self ) -> None :
+        self.image_painter = None
+        self.pixel_painter = None
         self.image.fill( self.black_color )
         self.setPixmap( QBitmap.fromImage( self.image ) )
 
@@ -252,8 +261,18 @@ class Screen( QLabel ) :
         hit = False
         P = self.P
         P2 = P >> 1
-        image_painter = QPainter( self.image )
-        pixel_painter = QPainter( self.pixmap() )
+        if self.image_painter is None :
+            '''
+            Set up two QPainters, one to paint on self.pixmap and one
+            to paint on self.image. They will be reused as long as possible,
+            and trashed when the screen mode changes or the emulator thread
+            starts of stops.
+            '''
+            self.image_painter= QPainter( self.image )
+            self.pixel_painter = QPainter( self.pixmap() )
+        '''
+        Process each pixel in the list of pixels.
+        '''
         for cx, cy in pixels :
             '''
             Convert CHIP-8 pixel to an image pixel upper left corner
@@ -278,15 +297,14 @@ class Screen( QLabel ) :
             Paint the CHIP-8 pixel's rectangle in both the image, so we
             can sample it later, and in the pixmap that is displayed.
             '''
-            image_painter.fillRect( px, py, P, P, color )
-            pixel_painter.fillRect( px, py, P, P, color )
+            self.image_painter.fillRect( px, py, P, P, color )
+            self.pixel_painter.fillRect( px, py, P, P, color )
 
         '''
         Because we paint directly on our displayed pixmap, Qt does not
         know it should repaint us on the screen. So, tell it.
         '''
         self.update( )
-
         return hit
 
     '''
@@ -985,6 +1003,8 @@ is starting.
 '''
 
 def change_of_thread( running=False ) -> None :
+    SCREEN.image_painter = None
+    SCREEN.pixel_painter = None
     SCREEN.ok_to_resize = not running
 
 '''
