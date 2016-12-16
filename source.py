@@ -87,9 +87,16 @@ from assembler2 import assemble
 from disassemble import disassemble
 
 '''
-Import the chip8, the emulator, for reset_vm and breakpoint ops.
+Import chip8, the emulator, for reset_vm and breakpoint ops.
 '''
 import chip8
+
+'''
+Import the memory and display windows so we can connect them
+to the Quit signal.
+'''
+import display
+import memory
 
 '''
 Import sys for .platform, and os/os.path for file ops.
@@ -966,12 +973,16 @@ class SourceWindow( QMainWindow ) :
         '''
         Create the Quit action, which Qt will put in the appropriate menu
         for the platform: File menu for Windows and Linux, App menu for mac.
-        When triggered it calls the QWidget.close() method which in turn will
-        issue a QCloseEvent, which we trap later.
+        When we connect the menu action's triggered signal to three slots:
+        the quit_signal_slot method in the display and memory windows, so they
+        know that a closeEvent is "real"; and to our own QWidget.close() method,
+        which in turn will issue a QCloseEvent for this window to trap.
         '''
         temp_action = QAction( '&Quit', self )
         temp_action.setMenuRole( QAction.QuitRole )
         temp_action.setShortcut( QKeySequence.Quit )
+        temp_action.triggered.connect( display.quit_signal_slot )
+        temp_action.triggered.connect( memory.quit_signal_slot )
         temp_action.triggered.connect(self.close)
 
         self.file_menu.addAction( temp_action )

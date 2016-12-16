@@ -996,17 +996,33 @@ class MasterWindow( QWidget ) :
 
     '''
     Override the built-in closeEvent() method to save our geometry and
-    the inst/tick spinbox in the settings.
+    the inst/tick spinbox in the settings. Ignore the event unless the
+    Quit menu action has been triggered.
     '''
     def closeEvent( self, event ) :
-        '''
-        When the window closes, write our geometry and spinbox value
-        into the settings.
-        '''
-        SETTINGS.setValue( "memory_page/size", self.size() )
-        SETTINGS.setValue( "memory_page/position", self.pos() )
-        SETTINGS.setValue( "memory_page/spinner", INST_PER_TICK.value() )
-        super().closeEvent( event ) # pass it along
+        global SETTINGS, ACTUALLY_QUITTING
+        if ACTUALLY_QUITTING :
+            '''
+            When the window closes, write our geometry and spinbox value
+            into the settings.
+            '''
+            SETTINGS.setValue( "memory_page/size", self.size() )
+            SETTINGS.setValue( "memory_page/position", self.pos() )
+            SETTINGS.setValue( "memory_page/spinner", INST_PER_TICK.value() )
+            super().closeEvent( event ) # pass it along
+        else :
+            event.ignore()
+
+'''
+Receive the signal from the Quit menu action that we are actually
+shutting down and note that in a global. The signal is connected
+from the Source module.
+'''
+ACTUALLY_QUITTING = False
+
+def quit_signal_slot( ) -> None :
+    global ACTUALLY_QUITTING
+    ACTUALLY_QUITTING = True
 
 '''
 

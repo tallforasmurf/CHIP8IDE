@@ -75,7 +75,8 @@ __all__ = [
     'scroll_left',
     'scroll_right',
     'key_test',
-    'sound'
+    'sound',
+    'quit_signal_slot'
 ]
 
 import logging
@@ -94,6 +95,7 @@ Import needed PyQt classes.
 '''
 
 from PyQt5.QtCore import (
+    QCoreApplication,
     Qt,
     QPoint,
     QSize,
@@ -717,6 +719,7 @@ When instantiated, it instatiates everything else.
 
 '''
 class DisplayWindow( QWidget ) :
+
     def __init__( self, settings ) :
         super().__init__( None )
         '''
@@ -814,14 +817,33 @@ class DisplayWindow( QWidget ) :
     '''
     Override the built-in closeEvent() method to save our geometry and key
     map in the settings. Also, stop the sound effect.
+
+    Note that in order not to allow this window to be closed prior to the
+    app actually quitting -- because if the user clicks the red button or
+    red X, the window would close and you can't get it back -- we condition
+    our acceptance of the event on the global ACTUALLY_QUITTING.
     '''
     def closeEvent( self, event ) :
-        global SFX
-        self.settings.setValue( "display_page/size", self.size() )
-        self.settings.setValue( "display_page/position", self.pos() )
-        self.key_mapper.shutdown( self.settings )
-        SFX.stop()
-        super().closeEvent( event ) # pass it along
+        global SFX, ACTUALLY_QUITTING
+        if ACTUALLY_QUITTING :
+            self.settings.setValue( "display_page/size", self.size() )
+            self.settings.setValue( "display_page/position", self.pos() )
+            self.key_mapper.shutdown( self.settings )
+            SFX.stop()
+            super().closeEvent( event ) # pass it along
+        else :
+            event.ignore()
+
+'''
+Receive the signal from the Quit menu action that we are actually
+shutting down and note that in a global. The signal is connected
+from the Source module.
+'''
+ACTUALLY_QUITTING = False
+
+def quit_signal_slot( ) -> None :
+    global ACTUALLY_QUITTING
+    ACTUALLY_QUITTING = True
 
 '''
 Set the mode of the emulated screen to CHIP-8 (32x64) or SCHIP (64x128) mode.
