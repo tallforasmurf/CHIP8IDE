@@ -971,20 +971,16 @@ class SourceWindow( QMainWindow ) :
         temp_action.triggered.connect(self.file_save_as)
 
         '''
-        Create the Quit action, which Qt will put in the appropriate menu
-        for the platform: File menu for Windows and Linux, App menu for mac.
-        When we connect the menu action's triggered signal to three slots:
-        the quit_signal_slot method in the display and memory windows, so they
-        know that a closeEvent is "real"; and to our own QWidget.close() method,
-        which in turn will issue a QCloseEvent for this window to trap.
+        Create the Quit action, which Qt will put in the appropriate menu for
+        the platform: File menu for Windows and Linux, App menu for mac. We
+        connect the menu action's triggered signal to our own QWidget.close()
+        method, which in turn will issue a QCloseEvent for this window to
+        trap. See closeEvent() below for more comments.
         '''
         temp_action = QAction( '&Quit', self )
         temp_action.setMenuRole( QAction.QuitRole )
         temp_action.setShortcut( QKeySequence.Quit )
-        temp_action.triggered.connect( display.quit_signal_slot )
-        temp_action.triggered.connect( memory.quit_signal_slot )
         temp_action.triggered.connect(self.close)
-
         self.file_menu.addAction( temp_action )
 
         '''
@@ -1298,9 +1294,19 @@ class SourceWindow( QMainWindow ) :
     '''
     Override the built-in closeEvent() method. Check to see if the
     current document is modified, and if so, ask the user if she wants
-    to save it. If the user cancels, or a file_save fails, return False,
-    thus cancelling the shutdown. Otherwise, save our geometry and
-    invoke the parent's closeEvent.
+    to save it. If the user cancels, or a file_save fails, ignore the event,
+    thus cancelling the shutdown.
+    
+    Otherwise, accept the event, save our geometry and
+    invoke the closeAllWindows method to shut down the rest of the app.
+    
+    We want the Memory and Display windows to ignore the Red-X button on
+    windows and equivalents elsewhere, but we also want them to close in this
+    case. To that end we call them at a quit_signal_slot method so they know
+    this is serious. (It's called quit_signal_slot because originally I
+    hooked it to the File>Quit menu action, but it needs to be generalized to
+    any close of the Source window.)
+    
     '''
     def closeEvent( self, event:QCloseEvent ) :
         if self.maybe_save( "Quit" ) :
@@ -1310,6 +1316,8 @@ class SourceWindow( QMainWindow ) :
             '''
             SETTINGS.setValue( "source_page/size", self.size() )
             SETTINGS.setValue( "source_page/position", self.pos() )
+            display.quit_signal_slot( )
+            memory.quit_signal_slot( )
             event.accept()
             qApp.closeAllWindows()
         else :
