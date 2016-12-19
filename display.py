@@ -305,6 +305,8 @@ class Screen( QLabel ) :
         know it should repaint us on the screen. So, tell it.
         '''
         self.update( )
+        QCoreApplication.processEvents( )
+        QTest.qWait(1)
         return hit
 
     '''
