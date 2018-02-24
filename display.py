@@ -28,36 +28,37 @@ __email__ = "davecortesi@gmail.com"
 
 The Interface window displays the emulated screen and emulated keypad.
 
-The module is called by the chip8ide module at initialize() to create the
-window and its contents as Qt objects. It sets its geometry from the saved
-settings. After creation, the window objects respond to Qt events from user
-actions.
-
 The window is an independent (that is, parent-less) window with the title
 "CHIP-8 I/O". It can be positioned, minimized or maximized independent of the
 rest of the app. Within the window are the following widgets:
 
 * The display, represented as a QLabel containing a QPixmap. It presents the
-CHIP8 (32x64) or SCHIP (64x128) display as an array of square pixels.
+display in CHIP8 (32x64) or SCHIP (64x128) format as an array of square
+pixels.
 
 * The keypad, represented as a grid of specialized QPushbuttons.
 
 This window also implements the CHIP-8 sound output, emitting a continuous
 tone while the sound register is nonzero.
 
-Design/factorization note. The MasterWindow object is a container for the
+The module is called by the chip8ide module at initialize() to create the
+window and its contents as Qt objects. It sets its geometry from the saved
+settings. After creation, the window objects respond to Qt events from user
+actions.
+
+Design/factorization note: The MasterWindow object is a container for the
 Screen and the Keypad objects. Nominally, the methods to operate on one of
 these, for example to set an emulated pixel or sample a key, would be methods
 of the MasterWindow -- which instantiates and contains those objects.
 
 However the API functions exported by this module all relate to direct
-manipulation of the screen and keypad. To make them go through the
+manipulation of the screen and keypad. To make API calls go through the
 MasterWindow would just add another layer of name lookup and function call.
 
 So when MasterWindow instantiates the Screen and Keypad objects, it puts
 references to them in globals so their methods can be called directly from
-the API functions. For example the exported draw_sprite() function can call
-directly into the Screen methods.
+the API functions. See for example the draw_sprite() module function, which
+calls directly into the Screen methods.
 
 '''
 
@@ -84,8 +85,9 @@ import logging
 from typing import List, Tuple
 
 '''
-Import the audio resource file, which was created from a .wav file
-using pyrcc5.
+Import the audio resource file, a Qt resource that was created from a .wav
+file using pyrcc5. During this import, the Qt resource qrc:/330HzSQARE.wav
+is created and registered. See initialize() below.
 '''
 
 import audio330hz
@@ -132,20 +134,21 @@ from PyQt5.QtMultimedia import QSoundEffect
 
 '''
 
-Define the emulated screen as customized QLabel.
+Define the emulated screen as a customized QLabel.
 
 The QLabel manages the emulated video display as a QImage. Qt documents
-QImage as being designed for "pixel access and manipulation".
+the QImage class as being designed for "pixel access and manipulation".
 
-The pixels of the CHIP-8 image are PxP rectangles, where P depends on the
-size of the QImage, but is at least 2.
+The emulated pixels of the CHIP-8 screen are PxP rectangles of QImage pixels,
+where P depends on the size of the QImage, but is at least 2.
 
 To actually draw a CHIP-8 pixel we use the QPainter method
-fillRect(x,y,w,h,color) where color is white or black. So to draw the CHIP-8
-pixel at cx, cy we use fillRect( P*cx, P*cy, P, P, color). To test the color of
-the CHIP-8 pixel cx, cy we sample the QImage pixel at (P*cx+P/2, P*cy+P/2).
+fillRect(x,y,w,h,color) where color is either white or black. To draw the
+CHIP-8 pixel at emulated coordinates cx, cy we use fillRect( P*cx, P*cy, P,
+P, color). To test the color of the CHIP-8 pixel at cx, cy we sample the
+QImage pixel at (P*cx+P/2, P*cy+P/2).
 
-To display the image in the Qlabel, it has to be converted into a
+To actually display the image in the Qlabel, it has to be converted into a
 QPixmap, This is done with the class method, QPixmap.fromImage().
 
 '''
@@ -153,13 +156,15 @@ class Screen( QLabel ) :
     def __init__( self, parent=None ) :
         super().__init__( parent )
         '''
-        Our minimum size should be 2x2 pixel-rectangles in SCHIP mode,
-        or 128x256 plus some allowance for a frame.
+        Our minimum size must allow for at least 2x2 pixel-rectangles. In
+        SCHIP mode, emulating 64x128, we need 128x256 px, plus some allowance
+        for a frame.
         '''
         self.setMinimumWidth( 2*128 + 20 )
         self.setMinimumHeight( 2*64 + 20 )
         '''
-        Set our size policy so we can grow but hopefully only in 1x2 ratio.
+        Set our size policy so we can grow. In resizeEvent() we ensure that
+        any growth retains the 1x2 ratio.
         '''
         sp = QSizePolicy( )
         sp.setHeightForWidth( True )
@@ -174,7 +179,7 @@ class Screen( QLabel ) :
         self.setMidLineWidth( 3 )
         '''
         Set to align our pixmap in the center. For some unknown reason,
-        if the scaledContents property is set, no drawing appears.
+        if the scaledContents property is on, no drawing appears.
         '''
         self.setAlignment( Qt.AlignCenter )
         #self.setScaledContents( True )
@@ -186,41 +191,46 @@ class Screen( QLabel ) :
         below will recreate the QImage to fit the new size.
 
         One might think that since we only work in black and white, it would
-        make sense to use QImage.Format_Monochrome or Format_Indexed8. Yeah,
-        one would think that, but anything other than RGB creates weird
+        make sense to use QImage.Format_Monochrome or Format_Indexed8. Yup,
+        one would think that; however anything other than RGB creates weird
         anomalies and strange behavior.
         '''
         self.image = QImage( QSize( self.minimumWidth(), self.minimumHeight() ),
                              QImage.Format_RGB32 )
+        '''
+        Store convenient colors for use later.
+        '''
         self.black_color = QColor( "black" )
         self.white_color = QColor( "white" )
         self.image.fill( self.black_color )
-        self.pixel_count = 0
         '''
-        Set up a flag which is False while the emulator is free-running,
-        so we do not attempt to resize the display while there is an image
-        on it.
+        Set up a flag which is False while the emulator (in chip8.py) is
+        free-running. This ensures we do not attempt to resize the display
+        while it is being updated. See API call change_of_thread() below.
         '''
         self.ok_to_resize = True
         '''
-        Set the initial emulated screen mode to standard, 32x64. Initialize
-        the factor P to the current height of the image.
+        Set the initial emulated screen mode to CHIP-8 standard, 32x64.
+        Initialize the factor P based on the current height of the image.
         '''
-        self.P = int( self.minimumHeight() / 32 )
         self.extended_mode = False
+        self.P = int( self.minimumHeight() / 32 )
         '''
-        Store QPaint devices here. They are used as long as possible, but
-        trashed whenever a change of thread occurs, see change_of_thread
-        and clear().
+        Store QPainterer devices for use later. They are re-used as long as
+        possible, but must be discarded whenever a change of thread occurs;
+        see change_of_thread() and clear().
         '''
         self.image_painter = None # type: QPainter
         self.pixel_painter = None # type: QPainter
 
     '''
-    Clear the emulated screen to black and update our pixmap contents. Get
-    rid of QPainters if we have any. This is called as the last step of a
-    resize event to convert the resized QImage to a QPixmap, and whenever
-    the screen mode is changed.
+    Clear the emulated screen to black and update our displayed pixmap.
+    Discard the QPainters if we have any.
+
+    This is called by the emulator when it resets before execution, and when
+    executing the 0x00E0 instruction. It is also called as the last step of a
+    resize event to convert the resized QImage to a QPixmap, and whenever the
+    screen mode is changed.
     '''
     def clear( self ) -> None :
         self.image_painter = None
@@ -229,28 +239,24 @@ class Screen( QLabel ) :
         self.setPixmap( QBitmap.fromImage( self.image ) )
 
     '''
-    Get and set the screen mode, where True means SCHIP or extended mode.
+    Get the current screen mode, where True means SCHIP or extended mode.
     '''
     def mode( self ) -> bool :
         return self.extended_mode
 
     '''
-    Set the mode to CHIP-8 or SCHIP. Recalculate pixel size P and clear
+    Set the screen mode to CHIP-8 or SCHIP. Recalculate pixel size P and clear
     the screen.
     '''
-    def set_mode( self, schip=False ) -> None :
-        if self.extended_mode != schip :
-            '''
-            Changing mode
-            '''
-            self.extended_mode = schip
+    def set_mode( self, schip:bool = False ) -> None :
+        self.extended_mode = schip
         '''
         Regardless of a change, setting the mode recalculates the P value and
         clears the screen. P is current height divided by either 32 or 64.
         '''
         self.P = int( self.image.size().height() / 32 )
         if self.extended_mode :
-            self.P >>= 1
+            self.P >>= 1 # make that, height/64
         self.clear()
 
     '''
@@ -266,9 +272,9 @@ class Screen( QLabel ) :
             Set up two QPainters, one to paint on self.pixmap and one
             to paint on self.image. They will be reused as long as possible,
             and trashed when the screen mode changes or the emulator thread
-            starts of stops.
+            starts or stops.
             '''
-            self.image_painter= QPainter( self.image )
+            self.image_painter = QPainter( self.image )
             self.pixel_painter = QPainter( self.pixmap() )
         '''
         Process each pixel in the list of pixels.
@@ -310,18 +316,20 @@ class Screen( QLabel ) :
         return hit
 
     '''
-    Implement scrolling. The same technique is used in all three scrolls. We
-    define a rectangle the current size of the screen, except displaced in
-    the opposite direction to the scroll (e.g. to the left when scrolling
-    right). We use that as the argument to the QImage.copy() method, which
-    returns a new QImage containing pixels from the current image where it
-    falls inside the rectangle, and black pixels where the rectangle falls
-    outside.
+    Implement scrolling. The SCHIP scroll instructions cause the screen to
+    scroll by one pixel, left or right, or by a given number of rows down.
+
+    The same technique is used in all three scrolls. We define a rectangle
+    the current size of the screen, except displaced in the opposite
+    direction to the scroll (e.g. to the left when scrolling right). We use
+    that as the argument to the QImage.copy() method, which returns a new
+    QImage containing pixels from the current image where it falls inside the
+    rectangle, and black pixels where the rectangle falls outside.
 
     It's just really cool that the Qt folks thought to properly support
-    negative X/Y values like this.
+    negative X/Y values in QImage.copy() like this.
     '''
-    def displace_rect( self, rect, x_diff, y_diff ) :
+    def displace_rect( self, rect:QRect, x_diff:int, y_diff:int ) :
         '''
         If one only calls QRect.setX(), it helpfully extends the rectangle
         to make its area larger. This function makes a new rect that is
@@ -329,14 +337,13 @@ class Screen( QLabel ) :
         '''
         return QRect( rect.x()+x_diff, rect.y()+y_diff, rect.width(), rect.height() )
 
-    def finish_scroll( self, new_rect ) :
+    def finish_scroll( self, new_rect:QRect ) :
         '''
         Factored out of the three scroll methods, build a new QImage
         from the old one based on an overlapping rectangle, and
         install it as our image and display it.
         '''
-        new_image = self.image.copy( new_rect )
-        self.image = new_image
+        self.image = self.image.copy( new_rect )
         self.setPixmap( QBitmap.fromImage( self.image ) )
 
     def scroll_right( self ) :
@@ -357,7 +364,7 @@ class Screen( QLabel ) :
     '''
     And scroll-down.
     '''
-    def scroll_down( self, rows ) :
+    def scroll_down( self, rows:int ) :
         P = self.P
         offset = P * rows
         new_rect = self.displace_rect( self.image.rect(), 0, -offset )
@@ -379,23 +386,27 @@ class Screen( QLabel ) :
     '''
     Receive a resize event. Per the Qt docs, "When resizeEvent() is called,
     the widget already has its new geometry. The widget will be erased and
-    receive a paint event immediately after processing the resize event."
-
-    On the very first resize, the image is a minimum-sized one. On a later
-    resize, the image has whatever size we set here.
-
-    Compare the image size to the new size of our whole widget. If the new
-    size has gotten enough smaller that the image no longer fits, then
-    resize. (Note that our minimum width and height keep us from getting
-    stupidly small.)
-
-    If the new size is larger by enough pixels to justify a change in P,
-    resize. A change in P is justified when at least 32 pixels are added
-    vertically and 64 horizontally, or twice that for SCHIP mode.
+    receive a paint event immediately after processing the resize event." Qt
+    is concerned with resizing the entire widget (QLabel) including its
+    frame. Here we are concerned with whether or not to resize the emulated
+    screen image within the widget.
 
     To resize means, build a new QImage sized to a multiple of 32/64 vertical
     and 64/128 horizontal, and set a new P factor. The image is filled with
-    black, so if the emulator is running, its current screen output is lost.
+    black (we do not attempt to preserve the current emulated pixel values)
+    so if the emulator is running, its current screen output is lost.
+
+    We compare the image size to the new size of our whole widget. If the new
+    size has gotten enough smaller that the image no longer fits, then resize
+    it. (Note that our QLabel minimum width and height keep us from getting
+    stupidly small.)
+
+    If the new widget size is larger by enough pixels to justify a change in
+    P, resize. A change in P is justified when at least 32 pixels are added
+    vertically and 64 horizontally, or twice that for SCHIP mode.
+
+    On the very first resize event, the image is a minimum-sized one. On a
+    later resize, the image has whatever size we set here.
     '''
     def resizeEvent( self, event:QResizeEvent ) :
         old_w = self.image.size().width()
@@ -405,22 +416,25 @@ class Screen( QLabel ) :
         do_resize = False
         if old_w > new_w or old_h > new_h :
             '''
-            Any amount of interference between the image and the frame
-            means we resize, which effects a downsize.
+            Our existing image exceeds the size of the QLabel. We must
+            resize, which will effect a downsize.
             '''
             do_resize = True
         else :
             '''
-            Growing? Not necessarily! But at least, there are 0 or more
-            available pixels between the current image and the frame.
-            Figure out if the gap justifies a resize, which is
-            true if we've added at least one screen of pixels.
+            The old image dimensions are less than the new widget dimensions.
+            Thus there are 0 or more available pixels between the current
+            image and the frame. Figure out if that gap justifies a resize,
+            which is true if we've added at least one screen of pixels.
             '''
             threshhold_h = 128 if self.extended_mode else 64
             threshhold_w = threshhold_h >> 1 # that  is, 64 or 32
             do_resize = (threshhold_h <= ( new_h - old_h ) \
                          and threshhold_w <= ( new_w - old_w ) )
         if do_resize and self.ok_to_resize :
+            '''
+            Image resize is advisable AND the emulator is not running free.
+            '''
             self.P = int( new_w / ( 128 if self.extended_mode else 64 ) )
             new_size = QSize(
                 self.P * ( 128 if self.extended_mode else 64 ),
@@ -428,47 +442,74 @@ class Screen( QLabel ) :
                 )
             self.image = QImage( new_size, QImage.Format_RGB32 )
             self.clear()
+        '''
+        In any case, pass the resize event to our parent widget.
+        '''
         super().resizeEvent( event )
 
 '''
 
-Define one keypad button. It is instantiated with its numeric code 0-16.
-From the code it derives is letter 0-F.
+Create the 16-button keypad as QWidget laid out as a 4x4 grid of KeyPadButton
+objects.
 
-It sets its size policy so it will expand to fill all available space
-in its layout.
+First, define one keypad button, based on QToolButton. A tool button has a text,
+in this case a single letter 0-9A-F, and handles mouse events to enter "down"
+and "up" states, which is shows visually and emits as signals.
+
+In addition our button has a "latched" state. It becomes "latched" when it is
+Shift-Clicked. While latched it reports status Down until it is unlatched.
+It is unlatched when the emulated program tests the keypad (or the emulator is reset).
+This allows the user to input a key while single-stepping the emulator.
+
+The keypad supports mapping computer keys to the emulated keypad, so the user
+can interact with an emulated program in a realistic way by tapping keys. The
+KeyPadButton has methods to receive key up/down events for the key that was
+mapped to it.
 
 '''
 
 class KeyPadButton( QToolButton ) :
     def __init__( self, code:int, parent = None ) -> None :
         super().__init__( parent )
+        '''
+        Note the numeric code 0-16, which is returned when the emulated
+        program samples the keypad. Derive our displayed letter 0-F and set
+        it as our visible text. Create and clear the latched state.
+        '''
         self.code = code
         self.letter = '{:1X}'.format( code )
         self.setText( self.letter )
         self.latched = False
+        '''
+        Set the size policy to expand to fill all available space in the layout.
+        '''
         spolicy = QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
         spolicy.setHorizontalStretch( 1 )
         spolicy.setVerticalStretch( 1 )
         self.setSizePolicy( spolicy )
 
+    '''
+    Intercept mouse press and use the Shift modifier to set or clear latched
+    status. Then pass it on to the parent for default actions.
+    '''
     def mousePressEvent( self, event ) :
         self.latched = int(Qt.ShiftModifier) == int( event.modifiers() )
         super().mousePressEvent( event )
 
     '''
     Handle a keyboard keystroke mapped to this button.
-    Set our "down" status true. This changes the background color so you
-    see the button was triggered. It does not send our pressed signal, so
-    generate that manually.
+
+    Set our "down" status true. This changes the background color so you see
+    the button was triggered. Changing "down" status does not send the
+    pressed signal, so generate that manually.
     '''
     def keyboard_press( self ) :
         self.setDown( True )
         self.latched = False
         self.pressed.emit()
     '''
-    On receipt of the timer kick, set our Down status off and emit our
-    released signal.
+    On release of the key, set our Down status off and emit the released
+    signal.
     '''
     def keyboard_release( self ) :
         self.setDown( False )
@@ -476,12 +517,11 @@ class KeyPadButton( QToolButton ) :
 
 '''
 
-Define the keypad as a 4x4 grid of KeyPadButtons. Capture the "pressed" and
-"release" signals of each button and use them to keep track of which button
-is currently down, or -1 if none of them are.
+Define the keypad itself.
 
-Keep a list of the 16 buttons so they can be referenced from the
-DisplayWindow during a keyPressEvent.
+Set up a 4x4 grid of KeyPadButtons. Route the "pressed" and "released"
+signals of each button to a single method where we keep track of which button
+is currently down, or a flag -1 when none of them are.
 
 '''
 
@@ -501,7 +541,11 @@ class KeyPad( QWidget ) :
         self.latched_code = False
         self.latched_button = None # type KeyPadButton
         '''
-        List the 16 buttons in order so they can be called individually.
+        List the 16 button objects in the order they appear in the array,
+        left-to-right, top-to-bottom (which is NOT numerical sequence).
+
+        When the Display window maps a keystroke to a button,
+        it refers to that button by an index 0..15 in that list.
         '''
         self.buttons = []
         '''
@@ -515,20 +559,30 @@ class KeyPad( QWidget ) :
             grid.setColumnMinimumWidth( n, min_size )
             grid.setRowMinimumHeight( n, min_size )
         '''
-        Create the buttons and lay them out. They are NOT in numerical
-        order (doh!) but are laid out:
+        Create the buttons and lay them out, left to right, top to bottom.
+        They are NOT in numerical order but are laid out so:
         '''
         key_code= [ 1, 2, 3, 12,
                     4, 5, 6, 13,
                     7, 8, 9, 14,
                     10,0,11, 15 ]
+
         for kp_index in range(16) :
+            '''
+            Make a new button of code value 0..F and save it.
+            '''
             kp_button = KeyPadButton( key_code[ kp_index ] )
             self.buttons.append( kp_button )
+            '''
+            Insert the button into the grid by row and column.
+            '''
             grid.addWidget(
                 kp_button,
                 kp_index // 4,
                 kp_index % 4 )
+            '''
+            Connect the signals from that button.
+            '''
             kp_button.pressed.connect( self.button_down )
             kp_button.released.connect( self.button_up )
 
@@ -537,7 +591,7 @@ class KeyPad( QWidget ) :
         This slot receives the pressed signal from any of the 16 buttons.
         Note which one, so when the emulator queries the keypad we can reply.
         Also note if it was shift-clicked to latch it, in which case we
-        ignore button_up status.
+        ignore a following button_up signal.
 
         This uses the QObject.sender() method to return a reference to the
         object (which we are sure is a KeyPadButton) that initiated the
@@ -554,8 +608,9 @@ class KeyPad( QWidget ) :
         This slot receives the released signal from any of the 16 buttons.
         If the key was not latched, then just set -1 as our current value.
 
-        When the key was latched, do not clear our value, and access the
-        button and set its "down" status so it stays visibly down.
+        When the key was latched at the time it was pressed, do not clear our
+        value, and access the button and set its "down" status so it stays
+        visibly down.
         '''
         if not self.latched_code :
             self.pressed_code = -1
@@ -575,19 +630,20 @@ class KeyPad( QWidget ) :
         '''
         DisplayWindow calls here when the user presses a keyboard key that is
         mapped to a keypad button. If a key is already down (due to mouse
-        action, or due to the user hitting a second key before the oneshot
-        timer used by the KeyPadButton class has expired) just ignore it.
-        Otherwise, pass it on to the button concerned.
+        action) just ignore it. Otherwise, pass it on to the button
+        concerned. The button will go to "down" state and emit the "pressed"
+        signal, resulting in a call to button_down() above.
         '''
         if self.pressed_code == -1 :
-            self.latched_code = False
             that_button = self.buttons[ button ]
             that_button.keyboard_press()
+
     def keyboard_release( self, button ) :
         '''
         DisplayWindow calls here when the user releases a keyboard key that is
         mapped to a keypad button. If the key released is not for a button that
-        is currently down, just ignore it. Otherwise, tell the button.
+        is currently down, just ignore it. Otherwise, tell the button. The button
+        will clear its "down" state and emit its "released" signal.
         '''
         that_button = self.buttons[ button ]
         if self.pressed_code == that_button.code :
@@ -734,8 +790,10 @@ class KeyChoiceCombo( QComboBox ) :
 
 '''
 
-Define the main window in which our stuff is displayed.
-When instantiated, it instatiates everything else.
+Define the window in which the display and keypad are displayed.
+
+When this instantiated from the initialize() function below, it instatiates
+all the above objects.
 
 '''
 class DisplayWindow( QWidget ) :
@@ -743,37 +801,44 @@ class DisplayWindow( QWidget ) :
     def __init__( self, settings ) :
         super().__init__( None )
         '''
-        Save the settings for the closeEvent.
+        Save the settings for use during the closeEvent.
         '''
         self.settings = settings
-
         '''
         Set our layout to a vbox.
         '''
         vbox = QVBoxLayout()
         self.setLayout( vbox )
         '''
-        Instantiate the screen.
+        Instantiate the screen and add it to the layout.
         '''
         self.screen = Screen()
         vbox.addWidget( self.screen, 10 )#, Qt.AlignTop | Qt.AlignLeft
-
         '''
-        Instantiate the keypad.
+        Instantiate the keypad and add it to the layout.
         '''
         self.keypad = KeyPad()
         vbox.addWidget( self.keypad, 9 )#, Qt.AlignTop | Qt.AlignRight
 
         '''
         Define the default key_maps. A key map is a string of 16
-        unique characters which are mapped to the 16 keypad keys.
+        unique characters which are mapped to the 16 keypad buttons.
         The following four maps are always present, but if the user
         defined others, they are saved in settings and restored.
         '''
         self.key_maps = [
-            '1234qwerasdfzxcv', # left side, right or left hand
-            '7890uiopjkl;m,.?', # right side, left hand
-            '4567ertysdfgzxcv', # middle, right hand
+            '1234'+
+             'qwer'+
+              'asdf'+
+               'zxcv', # left side, right or left hand
+            '7890'+
+             'uiop'+
+              'jkl;'+
+               'm,.?', # right side, right hand
+            '4567'+
+           'erty'+
+          'sdfg'+
+         'zxcv', # middle, left hand
             '0123456789abcdef'  # literal
             ]
 
@@ -796,10 +861,9 @@ class DisplayWindow( QWidget ) :
         between the top level windows.
         '''
         self.setFocusPolicy( Qt.ClickFocus )
-
         '''
         With all widgets created, resize and position the window
-        from the settings.
+        using saved geometry from the settings.
         '''
         self.resize( settings.value( "display_page/size", QSize(600,400) ) )
         self.move(   settings.value( "display_page/position", QPoint(100, 100) ) )
@@ -838,28 +902,41 @@ class DisplayWindow( QWidget ) :
     Override the built-in closeEvent() method to save our geometry and key
     map in the settings. Also, stop the sound effect.
 
-    Note that in order not to allow this window to be closed prior to the
-    app actually quitting -- because if the user clicks the red button or
-    red X, the window would close and you can't get it back -- we condition
-    our acceptance of the event on the global ACTUALLY_QUITTING.
+    Note that in order to not allow this window to be closed prior to the app
+    actually quitting -- as an independent window, if the user clicks the red
+    button or red X, the window would close, and you can't get it back
+    without quitting and restarting the app -- we condition our acceptance of
+    the event on the global ACTUALLY_QUITTING.
     '''
     def closeEvent( self, event ) :
         global SFX, ACTUALLY_QUITTING
         if ACTUALLY_QUITTING :
+            SFX.stop()
             self.settings.setValue( "display_page/size", self.size() )
             self.settings.setValue( "display_page/position", self.pos() )
             self.key_mapper.shutdown( self.settings )
-            SFX.stop()
             super().closeEvent( event ) # pass it along
         else :
             event.ignore()
 
 '''
-Receive the signal from the Quit menu action that we are actually
-shutting down and note that in a global. The signal is connected
-from the Source module.
+          End of Qt class definitions.
+
+          Begin module-level methods and globals.
+
+    The following globals are initialized in the initialize() function below.
 '''
 ACTUALLY_QUITTING = False
+OUR_WINDOW = None # type: QWidget
+SCREEN = None # type: Screen
+KEYPAD = None # type: KeyPad
+SFX = None # type: QSoundEffect
+
+'''
+Receive the signal from the Quit menu action that we are actually shutting
+down and note that in a global. The menu action is created and the signal is
+connected in the Source module.
+'''
 
 def quit_signal_slot( ) -> None :
     global ACTUALLY_QUITTING
@@ -883,7 +960,7 @@ def get_mode( ) -> bool :
 
 '''
 Draw a CHIP8 sprite on the emulated screen. The sprite is passed as a list of
-ints: 1 to 15 for a standard sprite, or 32 for an SCHIP 16x16 sprite.
+ints: 1 to 15 ints for a standard sprite, or 32 for an SCHIP 16x16 sprite.
 
 We analyze the bytes and select out the 1-bits. For each 1-bit we make a
 screen coordinate tuple. The list of tuples is passed to the paint_pixel_list()
@@ -970,9 +1047,13 @@ def clear( ) -> None :
 
 '''
 Scroll the emulated screen down N lines.
-? what if mode is now CHIP-8? force SCHIP? or ignore?
-Decision: just do it. Because most likely, any existing program
-that uses this, has already executed a HIGH to enter SCHIP mode.
+
+Query: what if mode is now CHIP-8, which did not support scroll-down? Force
+SCHIP mode, or ignore?
+
+Decision: just do it. Because most likely, any existing program that uses
+this, has already executed a HIGH to enter SCHIP mode. And if not, well, the
+old mode has a new feature.
 '''
 
 def scroll_down( n:int ) -> None :
@@ -993,15 +1074,20 @@ def scroll_right( ) -> None :
     SCREEN.scroll_right()
 
 '''
-The Screen keeps a QPainter around as long as it is relevant. However
-it is a disaster to try to use a QPainter from a thread different from
-the thread that created it. So whenever the Run thread is starting up
-or shutting down, it calls this function to say, "until further notice
-calls to screen operations will come from a different thread."
+The Screen keeps a QPainter around as long as it is relevant. However it
+turns out that QPainter objects are not thread-safe. It is a disaster to try
+to use a QPainter from a thread different from the thread that created it. So
+whenever the Run thread is starting up or shutting down, it calls this
+function to say, "until further notice, calls to screen operations will come
+from a different thread."
 
-Delete any existing QPainter -- that's a thread-safe thing to do --
-and the Screen will recreate it as needed, but in the thread that
-is starting.
+Delete any existing QPainters -- that's a thread-safe thing to do -- and the
+Screen will recreate them as and when needed. When it does, it will be
+executing on the thread that is starting.
+
+This is also a convenient time to set the ok_to_resize flag that prevents the
+emulated screen from responding to Qt resize events while the emulator is
+running.
 '''
 
 def change_of_thread( running=False ) -> None :
@@ -1015,19 +1101,19 @@ Turn the emulated beeper/tone on or off.
 The tone is implemented with a QSoundEffect object primed with a 4.25 second,
 330Hz, square wave tone.
 
-The emulator calls sound(True) when the ST reg is loaded, and calls
-sound(False) when the ST reg goes to zero or the emulator stops for some
+The emulator calls sound(True) when the emulated ST reg is loaded. It calls
+sound(False) when the ST reg goes to zero or when the emulator stops for some
 reason.
 
-It might seem logical to use SFX.play()/SFX.stop() for this. However, the
+It might seem logical to use SFX.play()/SFX.stop() for this. However, this
 sound() function is usually called from a separate thread, the RunThread in
 memory.py. When that thread calls SFX.play(), we get an error message about
 "cannot create child from another thread" -- it seems that the play() method
 creates an object.
 
 So the present solution is to call SFX.play() in initialize() and immediately
-call setMuted(True). So the sound is playing all the time, but muted. Then
-this function calls setMuted(False) to reveal the existing sound and
+call setMuted(True). So the sound is playing all the time, but muted. This
+function calls setMuted(False) to reveal the existing sound, and
 setMuted(True) to stifle it. The setMuted() call is apparently thread-safe.
 
 The disadvantage is that there is a slight break in the sound each time it
@@ -1063,7 +1149,7 @@ def key_read( ) -> int :
     return key_code
 
 '''
-    INITIALIZATION
+    MODULE INITIALIZATION
 
 Receive the settings object and save it in a global for shutdown time.
 Create the Display window including the screen and keypad.
@@ -1072,11 +1158,6 @@ Create the QSoundEffect object.
 '''
 
 from PyQt5.QtCore import QSettings
-
-OUR_WINDOW = None # type: QWidget
-SCREEN = None # type: Screen
-KEYPAD = None # type: KeyPad
-SFX = None # type: QSoundEffect
 
 def initialize( settings: QSettings ) -> None :
     global OUR_WINDOW, SCREEN, KEYPAD, SFX
