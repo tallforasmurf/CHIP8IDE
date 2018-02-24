@@ -1211,7 +1211,6 @@ def initialize( settings: QSettings ) -> None :
 
 
 if __name__ == '__main__' :
-    global ACTUALLY_QUITTING
 
     pass
 
@@ -1221,7 +1220,7 @@ if __name__ == '__main__' :
     settings = QSettings()
     ##settings.clear()
     initialize(settings)
-    ACTUALLY_QUITTING = True # otherwise you can't quit the unit test!
+    quit_signal_slot() # otherwise you can't quit the unit test!
     OUR_WINDOW.show()
     sprite = [0x20,0x70,0x70,0xF8,0xD8,0x88] # rocket ship
     draw_sprite( 16, 8, sprite )
