@@ -589,16 +589,32 @@ class KeyPad( QWidget ) :
     def button_down( self ) :
         '''
         This slot receives the pressed signal from any of the 16 buttons.
-        Note which one, so when the emulator queries the keypad we can reply.
-        Also note if it was shift-clicked to latch it, in which case we
-        ignore a following button_up signal.
 
-        This uses the QObject.sender() method to return a reference to the
-        object (which we are sure is a KeyPadButton) that initiated the
-        signal.
+        Use the QObject.sender() method to get a reference to the object
+        (we are sure it is a KeyPadButton) that sent the signal.
         '''
         that_button = self.sender()
+        '''
+        Save the code of the button to give to the emulator when the program
+        queries the keypad.
+        '''
         self.pressed_code = that_button.code
+        '''
+        If there is presently a different latched-down button, clear that status.
+        The user is (shift-)clicking a different button so presumably does not
+        want the previous latched button down.
+
+        If the just-pressed button was already latched down, remove the
+        latched status (but do not call its setDown() method as clear_latch()
+        would do). This allows toggling latched status with the mouse.
+        '''
+        if self.latched_code != self.pressed_code :
+            self.clear_latch()
+        else : # they are equal
+            self.latched_code = False
+        '''
+        If the newly-clicked button is now latched (shift-clicked), note that.
+        '''
         if that_button.latched :
             self.latched_code = True
             self.latched_button = that_button
