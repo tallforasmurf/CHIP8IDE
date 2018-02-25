@@ -77,7 +77,8 @@ __all__ = [
     'scroll_right',
     'key_test',
     'sound',
-    'quit_signal_slot'
+    'quit_signal_slot',
+    'reset_io'
 ]
 
 import logging
@@ -1163,6 +1164,28 @@ def key_read( ) -> int :
     key_code = KEYPAD.pressed_code
     KEYPAD.clear_latch()
     return key_code
+
+'''
+Reset display: called to clear the display when the emulated machine is
+reset, for example just before starting execution.
+    * set the mode to standard
+    * clear the emulated screen
+    * turn the sound off
+    * clear any latched key on the keypad
+
+Do none of these things unless our initialize() function has been called.
+'''
+def reset_io( ) -> None :
+    if KEYPAD :
+        '''
+        Assume the existence of a KEYPAD object means,
+        we have been initialized.
+        '''
+        set_mode( False )
+        clear( )
+        sound( False )
+        _ = key_read( )
+    # else: now running a unit-test, probably, so pass
 
 '''
     MODULE INITIALIZATION
