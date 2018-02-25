@@ -1291,7 +1291,8 @@ if __name__ == '__main__' :
     chip8.reset_vm( binasm( '6955 6AAA 89A1 89A2 89A3 00FD' ) )
     #chip8.CALL_STACK = [516,532,564]
     initialize(QSettings())
-    #STATUS_LINE.setText('helooooo')
+    quit_signal_slot() # otherwise the unit test cannot be ended!
+    STATUS_LINE.setText('now in unit test')
     OUR_WINDOW.show()
     the_app.exec_()
 
