@@ -31,7 +31,7 @@ into the emulator state. It is called by the chip8ide module at initialize()
 to create the window and its contents as Qt objects. After creation, the
 window objects respond to Qt events from user actions.
 
-The window is an independent (that is parent-less) window with the title
+The window is an independent (that is, parent-less) window with the title
 "CHIP-8 Emulator". It can be positioned, minimized or maximized independent
 of the rest of the app. During initialization it sets its geometry from the
 saved settings.
@@ -39,18 +39,19 @@ saved settings.
 Within the window are the following widgets:
 
 The Memory display is a table showing the 4096 bytes of emulated memory in
-128 rows of 32 bytes. When the emulator has been running and stops, the
-Memory display scrolls so that the line containing the current PC address is
-visible. When the emulator is not running, the user can edit individual bytes
-by double-clicking a byte and entering a new value.
+128 rows of 32 bytes. When the emulator is not running, the user can edit
+individual bytes by double-clicking a byte and entering a new value. When the
+emulator has been running and stops, the Memory display scrolls so that the
+line containing the current PC address is visible.
 
 Below the memory is a display of the call stack of subroutine return addresses.
 
-The Register display shows the 20 CHIP-8 registers (v0-vF, PC, I, ST, DT).
-When the emulator is not running, the user can edit the contents of these,
-and thus affect the execution of the program when it resumes. (One use for
-this ability: because the DT and ST are not decremented during single-step
-operation, the user could set them to simulate a change.)
+Next lower is the Register display, showing the contents of the 20 CHIP-8
+registers (v0-vF, PC, I, ST, DT). When the emulator is not running, the user
+can edit the contents of these, and thus affect the execution of the program
+when it resumes. (One use for this ability: because the DT and ST are not
+auto-decremented during single-step operation, the user could set them to
+simulate a change.)
 
 The RUN/STOP switch is a QPushbutton in one of two states. When the Emulator
 is not running, the button reads RUN. When clicked, the button toggles to
@@ -75,7 +76,7 @@ necessary to code Pascal-style, defining all names before they are used.
 import logging
 
 '''
-Define this module's API:
+Define this module's public API:
    initialize()
    MONOFONT and MONOFONT_METRICS
    the RSSButton class
@@ -85,7 +86,7 @@ __all__ = [ 'initialize', 'MONOFONT', 'MONOFONT_METRICS', 'RSSButton', 'connect_
 
 
 '''
-Import the memory, registers and call stack from the display module.
+Import the memory, registers and call stack from the chip8 module.
 Import the display module just so we can call display.sound().
 '''
 
