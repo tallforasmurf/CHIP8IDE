@@ -61,8 +61,9 @@ The following controls are at the bottom:
 The RUN/STOP switch is a QPushbutton in one of two states. When the Emulator
 is not running, the button reads RUN. When clicked, the button toggles to
 read STOP, and the emulator begins free-running execution of the program in
-memory, starting from the current PC. Clicking STOP terminates execution and
-returns the button to read RUN.
+memory, starting from the current PC. This is done in a separate thread.
+
+Clicking STOP terminates execution and returns the button to read RUN.
 
 The STEP button is a QPushbutton that is enabled when the emulator is not
 running. Clicking it causes the emulator to execute a single instruction at
@@ -81,27 +82,30 @@ Because this is a module, rather than a singleton class definition, it is
 necessary to code Pascal-style, defining all names before they are used.
 
 '''
-import logging
 
 '''
+
 Define this module's public API, which consists of
 
 * the initialize() function, called once by chip8ide.py to create the window.
 * the connect_signal() function that receives the Quit signal from the main window.
 
-Really, that's it. It opens the window and away we go.
+Really, that's it. initialize() opens the window and away we go.
+
 '''
 __all__ = [ 'initialize', 'connect_signal' ]
 
 
 '''
-Import the memory, registers and call stack from the chip8 module.
+Import the chip8 module for access to the memory, registers and call stack.
 Import the display module just so we can call display.sound().
+Import chip8util for access to the font and RSSButton class.
 '''
 
 import chip8
 import display
 import chip8util
+
 '''
 Import needed Qt names.
 '''
@@ -154,11 +158,14 @@ BLACK_BRUSH = QBrush( QColor( "Black" ) )
 WHITE_BRUSH = QBrush( QColor( "White" ) )
 
 '''
-Define the RUN/STOP button as a QPushButton. It has:
- * the checkable property, making it a toggle
- * initial text of "RUN!" -- it is set to "STOP" by the code
-   that handles the "toggled" signal.
+Define the RUN/STOP button. The base RSSButton class sets its visual properties
+including a mono font, and sizes it to a width of 8 ems.
+
+RUN/STOP has also the checkable property, which makes it a toggle rather than
+a simple pushbutton; and the initial text of "RUN!". The on_text of "STOP" is
+set by the code that handles the "toggled" signal.
 '''
+
 class RunStop( chip8util.RSSButton ) :
     def __init__( self, parent=None ) :
         super().__init__( parent )
@@ -179,7 +186,7 @@ We cannot instantiate a button until the App is created, so that has
 to wait until our initialize() function (below) is called.
 '''
 RUN_STOP_BUTTON = None # type: RunStop
-STEP_BUTTON = None # type: RSSButton
+STEP_BUTTON = None # type: chip8util.RSSButton
 
 '''
 Define the Instructions/tick widget as a QSpinbox (numeric entry widget)
@@ -188,8 +195,8 @@ will be instantiated when we initialize().
 
 A reference to it is stored in INST_PER_TICK for easy access.
 
-The start value is taken from saved settings.
-
+The start value is taken from saved settings, remembered from the previous
+session.
 '''
 
 class InstPerTick( QSpinBox ) :
@@ -203,55 +210,21 @@ class InstPerTick( QSpinBox ) :
 INST_PER_TICK = None # type: InstPerTick
 
 '''
+    MEMORY DISPLAY
 
-Define an item delegate to perform editing when a byte of memory is
-double-clicked. In the world of Qt MVC, a styled item delegate manages the
-editing of a table item. It has to implement three methods:
+The display of emulated memory is implemented using a Qt Table. In the world
+of Qt MVC (model-view-controller) programming, a table has three parts:
 
-* createEditor() creates a widget to do the editing, in this case,
-  a QLineEdit with an input mask.
+* The QTableView object controls the visual features of the table.
+* The table "model" stores the data for the view to display, and delivers
+  that data on request, whenever the view needs to paint one cell.
+* An "item delegate" is a dialog widget that is created by the view when
+  the user wants to edit the value in a cell of the table.
 
-* setEditorData() loads the editor widget with initial data
-
-* setModelData() takes the edited data and stores it in the model.
-
-With this mechanism in place it is quite easy to edit the memory view.
-Double-click one byte -- type 2 hex digits -- hit TAB and the data is stored
-and the following byte is opened for editing. Hit return or escape to stop
-editing.
-
-'''
-class MemoryEdit( QStyledItemDelegate ) :
-    def createEditor( self, parent, style, index ):
-        '''
-        Create a QLineEdit which will permit the input of exactly two
-        hexadecimal characters which are automatically uppercased.
-        '''
-        line_edit = QLineEdit( parent )
-        line_edit.setInputMask( '>HH' )
-        line_edit.setFont( chip8util.MONOFONT )
-        return line_edit
-
-    def setEditorData( self, line_edit, index ):
-        '''
-        Load the newly-created line edit with the byte value from the
-        selected memory cell. NB: the table index object has a convenient
-        data method that calls on the data() method of the table model, which
-        given Qt.DisplayRole conveniently returns two uppercase hex digits --
-        see MemoryModel.data() below.
-        '''
-        line_edit.setText( index.data( Qt.DisplayRole ) )
-
-    def setModelData( self, line_edit, model, index):
-        model.setData( index, line_edit.text(), Qt.DisplayRole )
-
-
-    '''
-Define the Memory display as a QTableView based on a QAbstractTableModel
-that delivers the contents of the emulated memory.
-
-The table dimensions are MEM_TABLE_COLS x MEM_TABLE_ROWS so it can be
-tinkered with. But it is likely either 16 x 256 or 32 x 128.
+To begin, define the Memory display as a QTableView. The table dimensions are
+MEM_TABLE_COLS x MEM_TABLE_ROWS, which must equal 4096. These are stored as
+globals so they can be tinkered with, but there seems little reason not to
+use 32 x 128.
 
 '''
 
@@ -271,7 +244,7 @@ class MemoryDisplay( QTableView ) :
         - no word-wrap, not that that would be an issue
         - scrolling, if needed, by whole cells not pixels
         - selection, when enabled, only one cell at a time,
-            i.e. no drag, shift-click etc. multiple selections
+            i.e. no multiple selections by drag, shift-click etc.
         '''
         self.setCornerButtonEnabled(False)
         self.setShowGrid(False)
@@ -280,7 +253,9 @@ class MemoryDisplay( QTableView ) :
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerItem)
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerItem)
         self.setSelectionMode(QAbstractItemView.ContiguousSelection)
-
+        '''
+        Associate the item delegate for editing (defined below)
+        '''
         self.setItemDelegate( MemoryEdit() )
         '''
         Try to get Qt to give the table appropriate space, using
@@ -296,7 +271,7 @@ class MemoryDisplay( QTableView ) :
             QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Preferred )
             )
         '''
-        Instantiate the model and connect it to this view.
+        Instantiate the table model (data supplier) and connect it.
         '''
         mm = MemoryModel( self )
         self.setModel( mm )
@@ -333,7 +308,14 @@ class MemoryDisplay( QTableView ) :
         '''
         self.selectionModel().select( sel_item, QItemSelectionModel.ClearAndSelect )
 
+'''
+Define the memory table model, the object that contains the contents of
+memory and delivers them as required by the table view. For example if the
+user scrolls the table up, it will call the model to get values for the cells
+as they are revealed.
 
+One object of this class is created during the View initialization, above.
+'''
 
 class MemoryModel( QAbstractTableModel ) :
 
@@ -341,9 +323,9 @@ class MemoryModel( QAbstractTableModel ) :
         super().__init__( parent )
 
     '''
-    The flags method tells Qt what the user can do with the table. We allow
-    editing (of one byte at a time, see setSelectionMode) but only if the
-    emulator is stopped.
+    The flags method tells Qt what the user can do with the table. It is
+    called to check the permissions of each cell as it is created. We allow
+    editing but only if the emulator is stopped.
     '''
     def flags( self, index ) :
         return Qt.ItemNeverHasChildren \
@@ -363,9 +345,9 @@ class MemoryModel( QAbstractTableModel ) :
         return MEM_TABLE_COLS
 
     '''
-    The data method returns data under various roles.
+    The data() method returns data for one cell in various "roles":
         display: return 2 hex characters of this byte
-        tooltip: return the address of the byte under
+        tooltip: return the address of the byte
         font: MONOFONT
         background: BLACK_BRUSH
         foreground: WHITE_BRUSH
@@ -386,7 +368,7 @@ class MemoryModel( QAbstractTableModel ) :
         return None
 
     '''
-    The headerData method returns data for the horizontal and
+    The headerData() method returns data for the horizontal and
     vertical headers. For the horizontal (column) header, show
     the hex digits 0..F. For the vertical, show the starting address.
 
@@ -407,9 +389,9 @@ class MemoryModel( QAbstractTableModel ) :
             return WHITE_BRUSH
 
     '''
-    The setData method stores a byte obtained by the MemoryEdit delegate. The
-    delegate's input mask ensures the input is 2 uppercase hex digits.
-    If this function returns False, no change is made. When the update is
+    The setData() method stores a byte obtained by the MemoryEdit delegate.
+    The delegate's input mask ensures the input is 2 uppercase hex digits. If
+    this function returns False, no change is made. When the update is
     successful it returns True and the table display updates only the cell
     selected by the index row/col.
     '''
@@ -423,40 +405,55 @@ class MemoryModel( QAbstractTableModel ) :
         return True
 
 '''
-Define a styled item delegate for manual editing of the register display.
-See comments on MemoryEdit, above.
+Define an item delegate to perform editing when a byte of memory is
+double-clicked. In the world of Qt MVC, a styled item delegate manages the
+editing of a table item. It has to implement three methods:
+
+* createEditor() creates a widget to do the editing, in this case,
+  a QLineEdit with an input mask.
+
+* setEditorData() loads the editor widget with initial data
+
+* setModelData() takes the edited data and stores it in the model.
+
+With this mechanism in place it is quite easy to edit the memory view.
+Double-click one byte, type 2 hex digits, hit TAB. The data is stored and the
+following byte is opened for editing. Hit return or escape to stop editing.
+
 '''
-class RegisterEdit( QStyledItemDelegate ) :
+class MemoryEdit( QStyledItemDelegate ) :
     def createEditor( self, parent, style, index ):
         '''
-        Create a QLineEdit which will permit the input of either
-        two or three uppercase hexadecimal characters.
+        Create a QLineEdit which will permit the input of exactly two
+        hexadecimal characters which are automatically uppercased.
         '''
-        col = index.column() # register number
         line_edit = QLineEdit( parent )
-        line_edit.setInputMask(
-            '>HHH' if (col == chip8.R.I or col == chip8.R.P) else '>HH'
-        )
+        line_edit.setInputMask( '>HH' )
         line_edit.setFont( chip8util.MONOFONT )
         return line_edit
 
     def setEditorData( self, line_edit, index ):
         '''
         Load the newly-created line edit with the byte value from the
-        selected memory cell. NB: the table index object has a convenient
-        data method that calls on the data() method of the table model, which
-        given Qt.DisplayRole conveniently returns two uppercase hex digits --
-        see MemoryModel.data() below.
+        selected memory cell. The table index object has a convenient
+        data() method that calls on the data() method of the table model with
+        the Qt.DisplayRole. That conveniently returns two uppercase hex digits,
+        just what we need. See MemoryModel.data() above.
         '''
         line_edit.setText( index.data( Qt.DisplayRole ) )
 
     def setModelData( self, line_edit, model, index):
+        '''
+        The user has hit Enter or Tab to complete editing the LineEdit
+        (rather than hitting escape to cancel). Put the entered data
+        into the model (and emulated memory) with model.setData.
+        '''
         model.setData( index, line_edit.text(), Qt.DisplayRole )
 
 '''
-Define the register display as a QTableView having only a header row and one
-data row. The Table view is based on a QAbstractTableModel that serves up the
-register contents.
+Define the register display as another QTable, complete with a View, a Model,
+and an item delegate for editing. This table has only a header row and one
+data row.
 '''
 
 class RegisterDisplay( QTableView ) :
@@ -484,6 +481,7 @@ class RegisterDisplay( QTableView ) :
         minw = 24 if sys.platform.startswith('win') else ( 22 if sys.platform.startswith('dar') else 20 )
         self.setMinimumWidth( chip8util.MONOFONT_METRICS.width( '00FF' * minw ) )
         self.setMaximumHeight(chip8util.MONOFONT_METRICS.lineSpacing() * 4 )
+
         self.setSizePolicy(
             QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
             )
@@ -538,7 +536,7 @@ class RegisterModel( QAbstractTableModel ) :
     '''
     The data method returns data under various roles.
         display: return 2 hex characters of this register
-        tooltip: return the name of the register under
+        tooltip: return the name of the register
         font: MONOFONT
         do not return anything for background/foreground, let it default.
     '''
@@ -556,8 +554,8 @@ class RegisterModel( QAbstractTableModel ) :
             return chip8util.MONOFONT
         return None
     '''
-    Headerdata returns the names of the registers for horizontal.
-    For vertical, the one row header, return "Reg:" Let fonts and colors default.
+    Headerdata returns the names of the registers for horizontal. For
+    vertical, the one row header, return "Regs" Let fonts and colors default.
     '''
     def headerData( self, section, orientation, role ) :
         if role == Qt.DisplayRole :
@@ -582,8 +580,46 @@ class RegisterModel( QAbstractTableModel ) :
         return True
 
 '''
-Define the Call Stack widget as a QListView based on a QAbstractListModel
-which represents the CALL_STACK.
+Define a styled item delegate for manual editing of the register display.
+See comments on MemoryEdit, above.
+'''
+class RegisterEdit( QStyledItemDelegate ) :
+    def createEditor( self, parent, style, index ):
+        '''
+        Create a QLineEdit which will permit the input of either
+        two or three uppercase hexadecimal characters.
+        '''
+        col = index.column() # register number
+        line_edit = QLineEdit( parent )
+        line_edit.setInputMask(
+            '>HHH' if (col == chip8.R.I or col == chip8.R.P) else '>HH'
+        )
+        line_edit.setFont( chip8util.MONOFONT )
+        return line_edit
+
+    def setEditorData( self, line_edit, index ):
+        '''
+        Load the newly-created line edit with the byte value from the
+        selected register, using the convenient data() method of the index
+        object, that calls on the data() method of the table model, which
+        given Qt.DisplayRole conveniently returns two or three uppercase hex
+        digits.
+        '''
+        line_edit.setText( index.data( Qt.DisplayRole ) )
+
+    def setModelData( self, line_edit, model, index):
+        '''
+        The user did not cancel out of the edit but hit return or tab.
+        Store the entered data into the model, which puts it in the
+        emulated register for this column.
+        '''
+        model.setData( index, line_edit.text(), Qt.DisplayRole )
+
+'''
+Define the Call Stack widget. Rather than a table we use a QListView. Like a
+table view, a list view is based on a data model, in this case a model based
+on the emulated call stack, a list of zero to twelve return addresses
+maintained by the emulator.
 '''
 
 class CallStackDisplay( QListView ) :
@@ -621,30 +657,30 @@ class CallStackModel( QAbstractListModel ) :
     model there is only ever 1 column, and the Call Stack always has 12 items
     which are its "rows".
     '''
-
     def rowCount( self, index ) :
         if index.isValid() : return 0
         return 12
-
     '''
     A Model returns "flags" that let the view know what can be done with
     data items. In this case, nothing at all.
     '''
-
     def flags(self, index) :
         return Qt.ItemNeverHasChildren
-
     '''
     A Qt Model returns data under several "roles". The View uses these items
     to build the display.
     '''
-
     def data( self, index, role ) :
         '''
-        Collect the column number for use later.
-        Note whether this column has a stack entry or not.
+        Collect the stack position for use later. The for a Qt list, the
+        desired item number is in index.row(). (I guess a list is a
+        one-column table?)
         '''
         item_number = index.row()
+        '''
+        The emulated stack might have zero, one to twelve items. Note whether
+        the requested item is in the stack or just empty.
+        '''
         stack_item_exists = item_number < len( chip8.CALL_STACK )
         '''
         Respond with data to the various "roles"
@@ -691,7 +727,12 @@ class CallStackModel( QAbstractListModel ) :
 
 '''
 Define the status line, basically a styled QLabel. The content is "rich text"
-although all the messages that are displayed are plain ASCII, we make them bold.
+although all the messages that are displayed are plain ASCII. We make it
+"rich" so we can force a bold font.
+
+Note that we do NOT set the chip8util.MONOFONT. On MacOS, the default system mono font
+does not have a bold variant. However, the default proportional font does have bold
+on all platforms, and is appropriate for general message text.
 '''
 
 class StatusLine( QLabel ):
@@ -700,7 +741,6 @@ class StatusLine( QLabel ):
         self.setLineWidth( 2 )
         self.setMidLineWidth( 1 )
         self.setFrameStyle( QFrame.Box | QFrame.Sunken )
-        #self.setFont( chip8util.MONOFONT ) on mac, system mono font does not have a bold
         self.setMinimumWidth(chip8util.MONOFONT_METRICS.width( 'F') * 80 )
         self.setMaximumHeight(chip8util.MONOFONT_METRICS.lineSpacing() * 2 )
         self.setSizePolicy(
@@ -715,9 +755,9 @@ class StatusLine( QLabel ):
 STATUS_LINE = None # type: StatusLine
 
 '''
-Define the window. The various widgets are all instantiated during the
-initialization code of this object. Note that the chip8 module should have
-been initialized before this module.
+Define the window. The various widgets declared above are all instantiated
+during the initialization code of this object. Note that the chip8 module
+should have been initialized before this module.
 '''
 
 class MasterWindow( QWidget ) :
