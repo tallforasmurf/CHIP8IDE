@@ -53,12 +53,20 @@ when it resumes. (One use for this ability: because the DT and ST are not
 auto-decremented during single-step operation, the user could set them to
 simulate a change.)
 
+Under the Registers, running the width of the window, is the Status line
+which displays the reason the emulator stopped.
+
+The following controls are at the bottom:
+
 The RUN/STOP switch is a QPushbutton in one of two states. When the Emulator
 is not running, the button reads RUN. When clicked, the button toggles to
-read STOP and the emulator begins execution of the current program.
+read STOP, and the emulator begins free-running execution of the program in
+memory, starting from the current PC. Clicking STOP terminates execution and
+returns the button to read RUN.
 
 The STEP button is a QPushbutton that is enabled when the emulator is not
-running. Clicking it causes the emulator to execute a single instruction.
+running. Clicking it causes the emulator to execute a single instruction at
+the current PC and then stop.
 
 "Inst/tick" is a QSpinBox (numerical entry widget) that allows the user to
 set the maximum number of emulated instructions that can be executed per
@@ -67,18 +75,19 @@ executed around 100 instructions per tick (about 2500/sec). On modern hardware
 the emulator can exceed that by orders of magnitude, and this gives the user
 control over how fast an emulated program runs.
 
-The status line shows the reason the emulator stopped executing.
+Coding note:
 
-Because this is a module (rather than a singleton class definition) it is
+Because this is a module, rather than a singleton class definition, it is
 necessary to code Pascal-style, defining all names before they are used.
 
 '''
 import logging
 
 '''
-Define this module's public API:
-   initialize()
-   MONOFONT and MONOFONT_METRICS
+Define this module's public API, which consists of
+
+* the initialize() function, called once by chip8ide.py to create the window.
+* the MONOFONT and MONOFONT_METRICS globals defining the font used
    the RSSButton class
 Really, that's it. It opens the window and away we go.
 '''
