@@ -87,11 +87,11 @@ import logging
 Define this module's public API, which consists of
 
 * the initialize() function, called once by chip8ide.py to create the window.
-* the MONOFONT and MONOFONT_METRICS globals defining the font used
-   the RSSButton class
+* the connect_signal() function that receives the Quit signal from the main window.
+
 Really, that's it. It opens the window and away we go.
 '''
-__all__ = [ 'initialize', 'MONOFONT', 'MONOFONT_METRICS', 'RSSButton', 'connect_signal' ]
+__all__ = [ 'initialize', 'connect_signal' ]
 
 
 '''
@@ -101,7 +101,7 @@ Import the display module just so we can call display.sound().
 
 import chip8
 import display
-
+import chip8util
 '''
 Import needed Qt names.
 '''
@@ -126,10 +126,6 @@ from PyQt5.QtCore import (
 from PyQt5.QtGui import (
     QBrush,
     QColor,
-    QFont,
-    QFontInfo,
-    QFontDatabase,
-    QFontMetrics,
     QIcon,
 )
 
@@ -140,7 +136,6 @@ from PyQt5.QtWidgets import (
     QLabel,
     QLineEdit,
     QListView,
-    QPushButton,
     QSizePolicy,
     QSpinBox,
     QStyledItemDelegate,
@@ -152,23 +147,6 @@ from PyQt5.QtTest import QTest
 
 
 '''
-Use Qt facilities to get a monospaced font to use in all widgets.
-Store it in MONOFONT for use from various other modules.
-'''
-
-MONOFONT = None # type: QFont
-MONOFONT_METRICS = None # type: QFontMetrics
-
-def initialize_mono_font( ) :
-    global MONOFONT, MONOFONT_METRICS
-    '''
-    Ask the QFontDatabase for the family of the recommended fixed-pitch font.
-    It returns a QFont with a default point size, which we store in the global.
-    '''
-    MONOFONT = QFontDatabase.systemFont( QFontDatabase.FixedFont )
-    MONOFONT_METRICS = QFontMetrics( MONOFONT )
-
-'''
 Some widgets require a QBrush with black color for background and a
 white QBrush for foreground.
 '''
@@ -176,34 +154,12 @@ BLACK_BRUSH = QBrush( QColor( "Black" ) )
 WHITE_BRUSH = QBrush( QColor( "White" ) )
 
 '''
-Define the "look" of the Run/Stop and Step buttons. They both use a
-scaled-up version of MONOFONT and have a minimum size based on the
-font metrics of that font.
-'''
-class RSSButton( QPushButton ) :
-
-    def __init__( self, parent=None ) :
-        super().__init__( parent )
-        font = QFont( MONOFONT )
-        font.setPointSize( 12 )
-        font.setBold( True )
-        self.setFont( font )
-
-        metrics = QFontMetrics( self.font() )
-        self.setMinimumSize(
-            QSize(
-                8 + metrics.width( 'MMMMMMMM' ),
-                8 + metrics.lineSpacing()
-                )
-            )
-
-'''
 Define the RUN/STOP button as a QPushButton. It has:
  * the checkable property, making it a toggle
  * initial text of "RUN!" -- it is set to "STOP" by the code
    that handles the "toggled" signal.
 '''
-class RunStop( RSSButton ) :
+class RunStop( chip8util.RSSButton ) :
     def __init__( self, parent=None ) :
         super().__init__( parent )
 
@@ -273,7 +229,7 @@ class MemoryEdit( QStyledItemDelegate ) :
         '''
         line_edit = QLineEdit( parent )
         line_edit.setInputMask( '>HH' )
-        line_edit.setFont( MONOFONT )
+        line_edit.setFont( chip8util.MONOFONT )
         return line_edit
 
     def setEditorData( self, line_edit, index ):
@@ -332,8 +288,8 @@ class MemoryDisplay( QTableView ) :
         '''
         self.setMinimumSize(
             QSize(
-                MONOFONT_METRICS.width( '00FF' * ( MEM_TABLE_COLS-1 ) ),
-                MONOFONT_METRICS.lineSpacing() * 30
+                chip8util.MONOFONT_METRICS.width( '00FF' * ( MEM_TABLE_COLS-1 ) ),
+                chip8util.MONOFONT_METRICS.lineSpacing() * 30
                 )
             )
         self.setSizePolicy(
@@ -422,7 +378,7 @@ class MemoryModel( QAbstractTableModel ) :
         elif role == Qt.ToolTipRole :
             return '{0:04X}'.format( (row * MEM_TABLE_COLS) + col )
         elif role == Qt.FontRole :
-            return MONOFONT
+            return chip8util.MONOFONT
         elif role == Qt.ForegroundRole :
             return WHITE_BRUSH
         elif role == Qt.BackgroundRole :
@@ -444,7 +400,7 @@ class MemoryModel( QAbstractTableModel ) :
             else :
                 return '{0:04X}'.format( MEM_TABLE_COLS * section ) # 0000, 0010...
         elif role == Qt.FontRole :
-            return MONOFONT
+            return chip8util.MONOFONT
         elif role == Qt.ForegroundRole :
             return BLACK_BRUSH
         elif role == Qt.BackgroundRole :
@@ -481,7 +437,7 @@ class RegisterEdit( QStyledItemDelegate ) :
         line_edit.setInputMask(
             '>HHH' if (col == chip8.R.I or col == chip8.R.P) else '>HH'
         )
-        line_edit.setFont( MONOFONT )
+        line_edit.setFont( chip8util.MONOFONT )
         return line_edit
 
     def setEditorData( self, line_edit, index ):
@@ -526,8 +482,8 @@ class RegisterDisplay( QTableView ) :
         '''
         import sys
         minw = 24 if sys.platform.startswith('win') else ( 22 if sys.platform.startswith('dar') else 20 )
-        self.setMinimumWidth(MONOFONT_METRICS.width( '00FF' * minw ) )
-        self.setMaximumHeight( MONOFONT_METRICS.lineSpacing() * 4 )
+        self.setMinimumWidth( chip8util.MONOFONT_METRICS.width( '00FF' * minw ) )
+        self.setMaximumHeight(chip8util.MONOFONT_METRICS.lineSpacing() * 4 )
         self.setSizePolicy(
             QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
             )
@@ -597,7 +553,7 @@ class RegisterModel( QAbstractTableModel ) :
         elif role == Qt.ToolTipRole :
             return 'register {}'.format( self.headers[ col ] )
         elif role == Qt.FontRole :
-            return MONOFONT
+            return chip8util.MONOFONT
         return None
     '''
     Headerdata returns the names of the registers for horizontal.
@@ -610,7 +566,7 @@ class RegisterModel( QAbstractTableModel ) :
             else :
                 return 'Regs'
         elif role == Qt.FontRole :
-            return MONOFONT
+            return chip8util.MONOFONT
         return None
     '''
     The setData method stores a value obtained by the RegisterEdit delegate.
@@ -645,8 +601,8 @@ class CallStackDisplay( QListView ) :
         Try to get Qt to give the table appropriate space, using
         manual tweaks of various properties - yechhh.
         '''
-        self.setMinimumWidth(MONOFONT_METRICS.width( '00FF' * 20 ) )
-        self.setMaximumHeight( MONOFONT_METRICS.lineSpacing() * 2 )
+        self.setMinimumWidth( chip8util.MONOFONT_METRICS.width( '00FF' * 20 ) )
+        self.setMaximumHeight(chip8util.MONOFONT_METRICS.lineSpacing() * 2 )
         self.setSizePolicy(
             QSizePolicy( QSizePolicy.Preferred, QSizePolicy.Preferred )
             )
@@ -705,7 +661,7 @@ class CallStackModel( QAbstractListModel ) :
             '''
             The font is always the Mono font
             '''
-            return MONOFONT
+            return chip8util.MONOFONT
         elif role == Qt.BackgroundRole :
             '''
             The background of occupied slots is black, empty slots are white.
@@ -744,9 +700,9 @@ class StatusLine( QLabel ):
         self.setLineWidth( 2 )
         self.setMidLineWidth( 1 )
         self.setFrameStyle( QFrame.Box | QFrame.Sunken )
-        #self.setFont( MONOFONT ) on mac, system mono font does not have a bold
-        self.setMinimumWidth(MONOFONT_METRICS.width( 'F') * 80 )
-        self.setMaximumHeight( MONOFONT_METRICS.lineSpacing() * 2 )
+        #self.setFont( chip8util.MONOFONT ) on mac, system mono font does not have a bold
+        self.setMinimumWidth(chip8util.MONOFONT_METRICS.width( 'F') * 80 )
+        self.setMaximumHeight(chip8util.MONOFONT_METRICS.lineSpacing() * 2 )
         self.setSizePolicy(
             QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Preferred )
             )
@@ -832,7 +788,7 @@ class MasterWindow( QWidget ) :
         '''
         * The Step button
         '''
-        STEP_BUTTON = RSSButton()
+        STEP_BUTTON = chip8util.RSSButton()
         STEP_BUTTON.setText( ' STEP  ' )
         hbox.addWidget( STEP_BUTTON )
         hbox.addStretch( 20 )
@@ -1257,7 +1213,7 @@ def initialize( settings: QSettings ) -> None :
     '''
     Initialize the font
     '''
-    initialize_mono_font()
+    chip8util.initialize_mono_font()
     '''
     Create the window and all widgets in it
     '''
@@ -1288,7 +1244,6 @@ from typing import Callable
 def connect_signal( slot: Callable ) :
     OUR_WINDOW.EmulatorStopped.connect( slot )
     # you may kiss the bride...
-
 
 if __name__ == '__main__' :
 
