@@ -730,9 +730,10 @@ Define the status line, basically a styled QLabel. The content is "rich text"
 although all the messages that are displayed are plain ASCII. We make it
 "rich" so we can force a bold font.
 
-Note that we do NOT set the chip8util.MONOFONT. On MacOS, the default system mono font
-does not have a bold variant. However, the default proportional font does have bold
-on all platforms, and is appropriate for general message text.
+Note that we do NOT set the chip8util.MONOFONT. On MacOS, the default system
+mono font does not have a bold variant. However, the default proportional
+font does have bold on all platforms, and is appropriate for general message
+text.
 '''
 
 class StatusLine( QLabel ):
@@ -755,15 +756,26 @@ class StatusLine( QLabel ):
 STATUS_LINE = None # type: StatusLine
 
 '''
-Define the window. The various widgets declared above are all instantiated
-during the initialization code of this object. Note that the chip8 module
-should have been initialized before this module.
+Here we create the entire Memory window. It is a QWidget with no parent,
+hence an independent window.
+
+The various widgets declared above are all instantiated during the
+initialization code of this object. Note that the chip8 module should have
+been initialized before this module so that the memory and register displays
+can have data to populate their views.
+
+The window also defines a Qt "signal" which it emits whenever the emulator
+comes to a stop (after running free, or after a single step) when the
+emulated program counter is different from before. The source window connects
+to this signal so that it can jump the source program to a new line at that
+time.
+
 '''
 
 class MasterWindow( QWidget ) :
     '''
-    Define a Qt signal of our own which we emit upon the emulator stopping
-    on a new PC.
+    Define a Qt signal to emit upon the emulator stopping. Its argument is
+    the new PC value.
     '''
     EmulatorStopped = pyqtSignal(int)
 
@@ -813,7 +825,8 @@ class MasterWindow( QWidget ) :
         hbox.addStretch( 10 )
         vbox.addLayout( hbox )
         '''
-        * A horizontal layout containing,
+        * A horizontal layout for the buttons, with stretch defined so that
+        the buttons sit together to the left with the spinner to the right.
         '''
         hbox = QHBoxLayout()
         hbox.addStretch( 5 )
@@ -841,16 +854,24 @@ class MasterWindow( QWidget ) :
         hbox.addWidget( INST_PER_TICK )
         hbox.addStretch( 10 )
         '''
+        Connect the clicked signal of the STEP switch to our step_click() method.
+        '''
+        STEP_BUTTON.clicked.connect( self.step_clicked )
+        '''
+            Connect the clicked signal of the RUN/STOP switch to run_stop_click().
+            '''
+        RUN_STOP_BUTTON.clicked.connect( self.run_stop_click )
+        '''
+        Register callback functions with the emulator so we will be notified
+        when the emulator will reset and when it has. Those methods below.
+        '''
+        chip8.reset_anticipation( self.reset_coming )
+        chip8.reset_notify( self.reset_display )
+        '''
         Set the window's focus policy to click-to-focus. Don't want tabbing
         between the top level windows.
         '''
         self.setFocusPolicy( Qt.ClickFocus )
-        '''
-        Register callbacks with the emulator to be notified when
-        the will reset and when it has.
-        '''
-        chip8.reset_anticipation( self.reset_coming )
-        chip8.reset_notify( self.reset_display )
         '''
         With all widgets created, resize and position the window
         from the settings.
@@ -858,18 +879,14 @@ class MasterWindow( QWidget ) :
         self.resize( settings.value( "memory_page/size", QSize(600,400) ) )
         self.move(   settings.value( "memory_page/position", QPoint(100, 100) ) )
         '''
-        Connect the clicked signal of the STEP switch to our step_click() method.
-        '''
-        STEP_BUTTON.clicked.connect( self.step_clicked )
-        '''
-        Connect the clicked signal of the RUN/STOP switch to run_stop_click().
-        '''
-        RUN_STOP_BUTTON.clicked.connect( self.run_stop_click )
-
-        '''
         Set the window title.
         '''
         self.setWindowTitle( "CHIP-8 Emulator" )
+        '''
+        If the emulated PC is nonzero, make it visible in the memory display.
+        '''
+        if chip8.REGS[ chip8.R.P ]:
+            self.memory_display.scroll_to_PC( chip8.REGS[ chip8.R.P ] )
         '''
         That's the end of initializing
         '''
@@ -919,11 +936,13 @@ class MasterWindow( QWidget ) :
         else :
             '''
             The button has gone from checked to unchecked, i.e. STOP clicked.
-            The run thread will notice the button state and enter its wait
-            state, at which time it releases the shared mutex. Wait for that.
+            The run thread will soon notice the button state and enter its
+            wait state, at which time it releases the shared mutex. Wait for
+            that to happen.
             '''
             THREAD_MUTEX.lock()
             '''
+            With the thread in the stopped state,
             * Make the button read RUN again
             * Put the emulator status in the status line
             * Re-enable and update the various tables.
@@ -952,8 +971,9 @@ class MasterWindow( QWidget ) :
             QTest.qWait(5)
 
     '''
-    When the VM has completed resetting, make all the tables update.
-    Also, clear the status line.
+    The emulated machine gets a full reset when a new program is loaded, as
+    well as various times in unit tests. When the VM has completed resetting,
+    make all the tables update. Also, clear the status line.
     '''
     def reset_display( self ) :
         global MEMORY_UPDATE_NEEDED
@@ -1042,8 +1062,8 @@ that. Further initialization has to wait until the thread is started. Then it
 initializes a 1/60th second timer and a QWaitCondition.
 
 In operation the thread executes in its run() method, which waits on the
-WaitCondition, then runs the emulator until it returns an error or the
-Run/Stop switch changes state, whichever comes first.
+WaitCondition, then runs the emulator until the emulator returns an error or
+the Run/Stop switch changes state, whichever comes first.
 
 '''
 
@@ -1051,12 +1071,14 @@ class RunThread( QThread ) :
 
     def __init__( self, mutex, parent=None ) :
         '''
-        Minimal object initialization, because the timer needs to be
-        created in this thread, which means created from the run() method.
-        Hence the real __init__ is post_init.
+        Minimal object initialization, because this __init__() is executed by
+        the calling thread, i.e. the main one running MainWindow. The timer
+        used in the thread needs to be created in that thread, which means,
+        created from within the run() method. Hence the real __init__() is
+        post_init() below.
         '''
         super().__init__( parent )
-        self.mutex = mutex
+        self.mutex = mutex # mutexes are thread-safe.
         self.message_text = None # type: str
 
     def post_init( self ) :
@@ -1065,8 +1087,8 @@ class RunThread( QThread ) :
         skosh less, which should not be a problem. For one thing, we probably
         blow one millisecond just getting it restarted.
 
-        The timer is (re)started with start(). As long as it isActive() the
-        interval has not expired.
+        The timer is (re)started with when the run() method wakes up from a
+        wait. As long as the timer isActive() the interval has not expired.
         '''
         self.timer = QTimer()
         self.timer.setInterval( 17 ) # juuuust over 1/60th
@@ -1109,7 +1131,7 @@ class RunThread( QThread ) :
             self.wait_for_click.wait( self.mutex )
             '''
             Yawn. Stretch. OK, set up to enter the loop.
-            Tell the Screen that a new thread will be calling it.
+            Tell the Screen module that a new thread will be calling it.
             If the emulated sound is supposed to be going, restart it.
             Initialize a counter. Start the timer going.
             '''
@@ -1135,12 +1157,22 @@ class RunThread( QThread ) :
                     * refresh the tick_limit (so the user can change it while
                       the emulator is running, for experimentation)
                     * start a new timer
+
+                    Also keeps two debugging values that could be logged or displayed:
+
+                    shortfall is the number of instructions requested by the
+                    inst-per-tick that are not executed -- when >0, you have
+                    asked for more insts than the emulator can do in 17ms.
+
+                    burn_count is the number of idle cycles we took to kill
+                    time waiting for the end of 17ms -- when >0, we could
+                    have done more emulated instructions than requested.
                     '''
                     chip8.tick()
                     shortfall = inst_count - INST_PER_TICK.value()
                     inst_count = 0
                     tick_limit = INST_PER_TICK.value()
-                    burn_count = 0 # DBG
+                    burn_count = 0
                     self.timer.start()
                 '''
                 If we have not reached the inst/tick limit, execute an instruction:
@@ -1198,7 +1230,6 @@ def step():
     global STATUS_LINE
 
     STATUS_LINE.clear()
-
     '''
     If the sound should be on, turn it on.
     '''
@@ -1209,7 +1240,6 @@ def step():
     Execute one instruction
     '''
     result = chip8.step()
-
     '''
     Turn the sound off in case it was on or was turned on.
     '''
