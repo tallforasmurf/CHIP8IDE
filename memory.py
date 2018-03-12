@@ -1073,9 +1073,9 @@ class RunThread( QThread ) :
         '''
         Minimal object initialization, because this __init__() is executed by
         the calling thread, i.e. the main one running MainWindow. The timer
-        used in the thread needs to be created in that thread, which means,
-        created from within the run() method. Hence the real __init__() is
-        post_init() below.
+        used in the run-thread needs to be created in that thread, which
+        means, created from within the run() method. Hence the real
+        __init__() is post_init() below.
         '''
         super().__init__( parent )
         self.mutex = mutex # mutexes are thread-safe.
@@ -1083,6 +1083,9 @@ class RunThread( QThread ) :
 
     def post_init( self ) :
         '''
+        The run() method has been called, so complete initialing now that
+        we are executing within that thread.
+
         Create a one-shot timer with an interval of 1/60th second, or just a
         skosh less, which should not be a problem. For one thing, we probably
         blow one millisecond just getting it restarted.
@@ -1124,16 +1127,17 @@ class RunThread( QThread ) :
         '''
         while True :
             '''
-            Wait to be awakened. Part of the wait() is that the mutex lock
-            is released. The MasterWindow can acquire the mutex as a way of
-            knowing that this thread has entered the wait.
+            Wait to be awakened. When a QWaitCondition.wait() method is
+            entered it releases the given mutex. The MasterWindow can acquire
+            the mutex as a way of knowing that this thread has entered the
+            wait -- see run_stop_click() above.
             '''
             self.wait_for_click.wait( self.mutex )
             '''
-            Yawn. Stretch. OK, set up to enter the loop.
-            Tell the Screen module that a new thread will be calling it.
-            If the emulated sound is supposed to be going, restart it.
-            Initialize a counter. Start the timer going.
+            Our wake_up() has been called. Yawn. Stretch. OK, set up to enter
+            the loop. Tell the Screen module that a new thread will be
+            calling it. If the emulated sound is supposed to be going,
+            restart it. Initialize a counter. Start the 1/60th timer going.
             '''
             display.change_of_thread( True )
             if chip8.REGS[ chip8.R.S ] :
@@ -1194,6 +1198,7 @@ class RunThread( QThread ) :
                     '''
                     QCoreApplication.processEvents( )
                     burn_count += 1 #DBG
+            # end while
             '''
             Either the RUN/STOP switch was clicked, or the emulator returned
             an error. If the emulated tone is sounding, stop it.
@@ -1201,7 +1206,8 @@ class RunThread( QThread ) :
             display.sound( on=False )
             if self.message_text is None :
                 '''
-                We stopped because the Run/Stop button changed state.
+                We stopped because the Run/Stop button changed state. Supply
+                a message for the status line.
                 '''
                 self.message_text = 'Stopped'
             else :
@@ -1218,6 +1224,7 @@ class RunThread( QThread ) :
             '''
             Start over from the wait.
             '''
+        # end while True
 
 '''
 
@@ -1307,13 +1314,14 @@ connect_signal(), a request from some other module (actually, source) to please
 connect their callable to our signal EmulatorStopped.
 
 this can only be done after initialize() has run, because the MasterWindow
-is created then.
+is created then. However, it may be that another module is doing a unit test
+and doesn't need us.
 '''
 from typing import Callable
 
 def connect_signal( slot: Callable ) :
-    OUR_WINDOW.EmulatorStopped.connect( slot )
-    # you may kiss the bride...
+    if OUR_WINDOW : # is not None,
+        OUR_WINDOW.EmulatorStopped.connect( slot )
 
 if __name__ == '__main__' :
 
