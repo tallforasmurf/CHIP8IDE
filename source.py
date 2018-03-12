@@ -68,10 +68,15 @@ Define exported names. TODO
 __all__ = [ 'initialize' ]
 
 '''
-Import the monofont prepared by the memory module, and its
-definition of a button class.
+Import the chip8util module for access to the chip8util.MONOFONT definition and the
+RSSButton class.
 '''
-from memory import MONOFONT, MONOFONT_METRICS, RSSButton, connect_signal
+import chip8util
+
+'''
+get access to the memory module's new-PC-value signal
+'''
+from memory import connect_signal
 
 '''
 Import the Statement class.
@@ -317,14 +322,14 @@ class SourceEditor( QPlainTextEdit ) :
         self.main_window = main_window
         '''
         Set the editor options:
-           font to our Monofont
+           font to our chip8util.MONOFONT
            accept the focus by click or by tab
            accept dropped text
            don't wrap lines
            make tab stops half the default
               n.b. tabStopWidth is in pixels, defaults to 80
         '''
-        font = QFont( MONOFONT )
+        font = QFont( chip8util.MONOFONT )
         font.setPointSize( 12 )
         self.setFont( font )
         self.setFocusPolicy( Qt.StrongFocus )
@@ -863,9 +868,9 @@ class SourceWindow( QMainWindow ) :
         '''
         self.status_line = QLineEdit()
         self.status_line.setReadOnly( True )
-        self.status_line.setFont( MONOFONT )
+        self.status_line.setFont( chip8util.MONOFONT )
         self.status_line.setSizePolicy( QSizePolicy.Expanding, QSizePolicy.Minimum )
-        self.status_line.setMinimumWidth( MONOFONT_METRICS.width( 'M'*30 ) )
+        self.status_line.setMinimumWidth( chip8util.MONOFONT_METRICS.width( 'M'*30 ) )
 
         '''
         Create a flag that shows whether the current source has been
@@ -903,9 +908,9 @@ class SourceWindow( QMainWindow ) :
         hbox = QHBoxLayout()
         hbox.addWidget( self.status_line, 2, Qt.AlignLeft )
 
-        self.check_button = RSSButton()
+        self.check_button = chip8util.RSSButton()
         self.check_button.setText( 'CHECK' )
-        self.load_button = RSSButton()
+        self.load_button = chip8util.RSSButton()
         self.load_button.setText( 'LOAD' )
 
         hbox.addWidget( self.check_button, 1 )
@@ -1296,17 +1301,17 @@ class SourceWindow( QMainWindow ) :
     current document is modified, and if so, ask the user if she wants
     to save it. If the user cancels, or a file_save fails, ignore the event,
     thus cancelling the shutdown.
-    
+
     Otherwise, accept the event, save our geometry and
     invoke the closeAllWindows method to shut down the rest of the app.
-    
+
     We want the Memory and Display windows to ignore the Red-X button on
     windows and equivalents elsewhere, but we also want them to close in this
     case. To that end we call them at a quit_signal_slot method so they know
     this is serious. (It's called quit_signal_slot because originally I
     hooked it to the File>Quit menu action, but it needs to be generalized to
     any close of the Source window.)
-    
+
     '''
     def closeEvent( self, event:QCloseEvent ) :
         if self.maybe_save( "Quit" ) :
@@ -1346,9 +1351,14 @@ if __name__ == '__main__' :
     #'''
     #Aaaaand we hack up some tests. Lasciate ogne speranza...
     #'''
-    ##from binasm import binasm
+    from binasm import binasm
 
-    #from PyQt5.QtWidgets import QApplication
-    #args = []
-    #the_app = QApplication( args )
+    from PyQt5.QtWidgets import QApplication
+    args = []
+    the_app = QApplication( args )
+    chip8util.initialize_mono_font()
+    initialize(QSettings())
+    the_app.exec_()
+
+
 
