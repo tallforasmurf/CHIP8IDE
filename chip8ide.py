@@ -148,6 +148,13 @@ Each saves a reference to that object to use when it receives the
 QcloseEvent.
 
 Import in the following order:
+
+   chip8util and initialize the mono font.
+'''
+import chip8util
+chip8util.initialize_mono_font()
+
+'''
    display.py has no dependencies
 '''
 
