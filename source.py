@@ -26,44 +26,57 @@ __email__ = "davecortesi@gmail.com"
 
     CHIP-8 IDE Source Window
 
-This module defines the Source window, which is the Qt Main Window and owns
-the menus. It displays one main widget, a QTextEdit, a status line, and two
+This module defines the Source window, which is the Qt Main Window and
+implements the File menu (the only menu).
+
+The purpose is to allow the user to enter or edit programs in CHIP-8 assembly
+language, and to assemble them to binary and load them into the emulated
+machine for execution. The user can create or load source code, or can load a
+CHIP-8 executable file in binary mode. An executable is disassembled into
+source for display.
+
+The window contains one main widget, a QTextEdit, plus a status line and two
 buttons named LOAD and CHECK.
 
-CHIP-8 assembly programs are loaded into the editor, or entered there by the
-user. Lexical errors are caught as statements are entered. An invalid statement
-is highlighted by a pink background.
+The File>Load and File>Save commands are implemented in this module.
+See below for commentary.
 
-Not all errors can be recognized on entry. For example, a statement that
-refers to a name that has not yet been defined may be an error, or may become
-correct when the name is defined on a later statement, or when the spelling
-of the name is edited on this or some other statement.
+The result of File>Load is to bring a CHIP-8 assembly program into the
+editor; or one may be entered there by the user. During load or editing,
+lexical errors are caught as statements are entered. An invalid statement is
+highlighted by a pink background.
+
+Only lexical errors can be recognized during editing. Semantic errors are not
+caught during editing. For example, a statement that refers to a name that
+has not yet been defined may be an error, or may become correct when the name
+is defined on a later statement, or when the spelling of the name is edited
+on this or some other statement.
 
 At any time the CHECK button can be clicked. The existing program source is
-assembled and any further error lines are highlighted.
+assembled, with the result that semantic errors are detected and those lines
+are highlighted.
 
-Clicking the LOAD button also causes assembly and if there are no errors, the
+Clicking the LOAD button also causes assembly, and if there are no errors, the
 assembled binary is loaded into the emulator ready to execute.
 
-Information about the line on which the edit cursor rests is shown in a
-field below the editor. This can include an error message, or after an
-assembly pass, the actual bytes assembled for that statement.
+Information about the line on which the edit cursor currently rests is shown
+in the status line below the editor. If the line is in error, the status is a
+(hopefully) informative message. If the line is not in error, and an assembly
+has been done, the status line shows the actual bytes assembled for that
+statement.
 
 The assembler syntax supported is essentially the same as that of CHIPPER-8
 (see README/Sources) and by Jeffrey Bian's MOCHI-I. Those assemblers also
 support the directives for conditional assembly (DEFINE, UNDEF, IFDEF, etc.).
-This assembler does NOT support those directives. (To be revisited if it
-turns out desirable game programs use them.)
-
-The File>Load and File>Save commands are implemented in this module.
-See below for commentary.
+Currently this assembler does NOT support those directives. (To be revisited
+if it turns out desirable game programs use them.)
 
 '''
 from typing import List
 import logging
 
 '''
-Define exported names. TODO
+Define exported names.
 '''
 __all__ = [ 'initialize' ]
 
@@ -157,22 +170,36 @@ from PyQt5.QtWidgets import (
     )
 
 '''
+Define some colors, quite arbitrarily.
 
-Define the QSyntaxHighlighter by way of which we inspect each new
-statement after it is edited.
+* Current line: a very light yellow.
+* Invalid statement: pale tomato soup
+* Breakpoint line: light lilac
+'''
+CURRENT_LINE_COLOR = "#FAFAE0"
+INVALID_LINE_COLOR = "#FF8090"
+BREAKPOINT_LINE_COLOR = "thistle"
 
-A syntax highlighter is independent of the editor; it is associated with a
-QTextDocument. When first connected to the document, the highlighter is
-called to inspect every line. Thereafter it is called whenever a line is
-edited, even by one keystroke.
+'''
 
-The job of this highlighter is to validate the current statement, and to
-store the Statement object that results. Validation is done by the
-phase_one() function in module assembler1.
+Define the QSyntaxHighlighter by means of which we inspect each new
+statement as it is edited.
 
-When phase_one() returns a Statement with is_valid False, we make the
-line turn INVALID_LINE_COLOR.
+A syntax highlighter is a feature of a QTextDocument, independent of the editor.
 
+When first connected to the document, the highlighter is called to inspect
+every line in it. Thereafter it is called whenever a line is edited, even by
+one keystroke.
+
+The job of a highlighter is to provide language- or syntax-dependent editing
+of a document. One can be used, for example, to highlight language keywords.
+
+In this application, the highligher has these jobs:
+    * create a Statement object if needed, or access the existing one
+    * validate the current statement and update the Statement object
+    * when the statement is not valid, make the line turn INVALID_LINE_COLOR.
+
+Validation is done by the phase_one() function in module assembler1.
 '''
 
 '''
@@ -192,7 +219,9 @@ class Highlighter( QSyntaxHighlighter ) :
         '''
         super().__init__( None )
         '''
-        Make a QTextCharFormat to apply to errors.
+        Make a QTextCharFormat to apply to invalid lines. It sets a
+        background color of INVALID_LINE_COLOR, and always applies to the
+        full width of the line.
         '''
         self.error_format = QTextCharFormat( )
         self.error_format.setBackground( QBrush( QColor( INVALID_LINE_COLOR ) ) )
@@ -228,6 +257,7 @@ class Highlighter( QSyntaxHighlighter ) :
 
         '''
         Perform tokenization and lexical validation of this line.
+        See assembler1.py, phase_one().
         '''
         phase_one( text, S )
 
@@ -235,24 +265,27 @@ class Highlighter( QSyntaxHighlighter ) :
             self.setFormat( 0, len(text), self.error_format )
 
 '''
-Define some colors, quite arbitrarily.
-
-* Current line: a very light yellow.
-* Invalid statement: pale tomato soup
-* Breakpoint line: light lilac
-'''
-CURRENT_LINE_COLOR = "#FAFAE0"
-INVALID_LINE_COLOR = "#FF8090"
-BREAKPOINT_LINE_COLOR = "thistle"
-
-'''
     Define the Find/Replace dialog.
 
-It's a basic QDialog with two text fields and four pushbuttons.
+It's a basic QDialog with two text fields, for Find and Replace, and the following
+four pushbuttons:
+    Find: Search for the next occurrence of the text in the Find string,
+          wrapping around at the end of the data.
 
-The SourceEditor instantiates one copy and keeps it around. It is shown when
-the user keys ^F. But its find_text and replace_text widgets remain available
-after it has closed again, and can be used from e.g. the ^G key event.
+    Close: close the dialog.
+
+    Replace: Replace the current selection (regardless of how it was made) with
+         the text in the replace field.
+
+    All!: replace every instance of the text in the find field with the
+         text in the replace field.
+
+The SourceEditor instantiates one copy of the QDialog and keeps it around. It
+is shown when the user keys ^F. But its find_text and replace_text widgets
+remain available after it has closed again, and can be used from e.g. the ^G
+key event.
+
+TODO: dress up the dialog with at least some labels on the text fields.
 
 '''
 class FindDialog( QDialog ) :
@@ -312,8 +345,17 @@ class FindDialog( QDialog ) :
 '''
     Define the Editor
 
-A QPlainTextEdit is a very capable editor on its own, but it needs
-a lot of customization to do the things we want it to do.
+The central widget and the focus of the user's attention is a source editor.
+This is based on the QPlainTextEdit widget, which is a very capable editor
+on its own, but it needs a lot of customization to do the things we want
+it to do.
+
+Within the editor object we handle all keystrokes including the ones for
+find/replace, and to toggle breakpoints, and to move the cursor to the next
+line with an error. We make lines appear in different colors when they have
+an error or are marked for a breakpoint. When the emulator has been running
+and stops, we jump the cursor to the line with the current PC value.
+
 '''
 
 class SourceEditor( QPlainTextEdit ) :
@@ -340,17 +382,20 @@ class SourceEditor( QPlainTextEdit ) :
         Set up a list of "extra selections", the mechanism by which we get
         the editor to show different lines in different colors. The list is a
         list of QTextEdit.ExtraSelection objects, see make_extra_selection()
-        below. Initially and often the list has only one item, the selection
-        for painting the current line a nice pale lemony yellow.
+        below. Initially, and often, the list has only one item, the
+        selection for painting the current line a nice pale lemony yellow.
         '''
         self.current_line_selection = self.make_extra_selection( CURRENT_LINE_COLOR )
         self.extra_selection_list = [ self.current_line_selection ]
 
         '''
-        Connect the signal that the cursor moved, to our routine that updates
-        the color of the current line. Set up a current text block variable
-        so that routine can know when the actual line has changed. Then fake
-        the signal to start us off.
+        The parent edit widget provides a signal that the cursor moved;
+        connect it to our routine that updates the color of the current line.
+        This is how we move the current line color in sync with the cursor.
+
+        Of course the cursor can move sideways, so set up a current text
+        block variable so that signal handler can know when the actual line
+        has changed. Then fake the signal to start us off.
         '''
         self.last_text_block = None
         self.cursorPositionChanged.connect( self.cursor_moved )
@@ -361,8 +406,14 @@ class SourceEditor( QPlainTextEdit ) :
         '''
         connect_signal( self.show_pc_line )
         '''
-        Initialize a dispatch table for the key event handler. Cannot do
-        static initialization of this as a class variable.
+        Initialize a dispatch table for the key event handler.
+
+        Each key in the table describes one keystroke event; each value is
+        the callable to be invoked by that key.
+
+        N.B. it seems we cannot do static initialization of such a table as a
+        class variable, possibly because the callables don't exist at class
+        definition time.
         '''
         self.key_dispatch = {
             int(Qt.Key_B) | int(Qt.ControlModifier) : self.toggle_bp,
@@ -373,6 +424,7 @@ class SourceEditor( QPlainTextEdit ) :
             int(Qt.Key_Equal) | int(Qt.ControlModifier) : self.replace_selection,
             int(Qt.Key_T) | int(Qt.ControlModifier) : self.replace_and_find
             }
+
         '''
         Create one instance of the Find dialog and save it for use later.
         '''
@@ -392,19 +444,19 @@ class SourceEditor( QPlainTextEdit ) :
     Upon any movement of the cursor, even by one character, this slot
     is entered. (So, it behooveth us to be snappy!).
 
-    If we have fields with meta-data about the current line, like the
-    current line or column number, this would be the place to update them.
-    But we don't, as of now.
+    If we displayed meta-data about the current line, like the current line
+    or column number, this would be the place to update them. But we don't,
+    as of now.
 
     If the cursor is now on a different line number (text block) than before,
     change the cursor in the current-line "extra selection" to the position
-    of the current line. Note that the cursor in an extra selection may not
-    have a selection. The current cursor might have one, so clear it.
+    of the current line.
 
     To make the new selection(s) appear we have to call setExtraSelections.
-    The whole list (which might or might not include breakpoints) is set.
-    The current line selection last so it will take precedence over breakpoints
-    (and, it happily turns out, over red error-highlighting).
+    The whole list of lines with background colors, which might or might not
+    include purple breakpoints and red error lines, is set. The current line
+    selection is last in the list, and as a result its yellow will take
+    precedence over any purple and red highlighting.
 
     '''
 
@@ -414,9 +466,15 @@ class SourceEditor( QPlainTextEdit ) :
         if text_block == self.last_text_block :
             # same line, nothing to do
             return
+        # remember the new line for next time
         self.last_text_block = text_block
+        # make a cursor for the current line
         self.current_line_cursor = QTextCursor( text_block )
+        # make it the cursor for the one extra-selection object,
+        # which is already in the extra selection list.
         self.current_line_selection.cursor = self.current_line_cursor
+        # Re-do all "extra selections" in order to clear the old
+        # current line and set the new current line color.
         self.setExtraSelections( self.extra_selection_list )
         '''
         Get the Statement out of the current text block and have a look.
@@ -435,8 +493,9 @@ class SourceEditor( QPlainTextEdit ) :
                     status_msg += ' near ' + str( S.error_pos )
             else :
                 '''
-                The new current line is not an error. If it has been assembled,
-                and the document is unchanged, display its text and PC.
+                The new current line is not an error. If it has been
+                assembled, and the document is unchanged since the assembly,
+                display its text and PC.
                 '''
                 if S.value and self.main_window.clean_assembly :
                     if S.value_dump == '' :
@@ -449,14 +508,12 @@ class SourceEditor( QPlainTextEdit ) :
                     status_msg = S.value_dump
         self.main_window.status_line.setText( status_msg )
 
-
-
     '''
     The following method is the slot to receive the EmulatorStopped signal
     out of the memory module. The signal carries an int value which is the
     new PC. We want to find the statement (QTextBlock) that matches that PC,
-    move the edit cursor to that line (thus highlighting it, see cursor_moved above),
-    and make sure it is visible in the window.
+    move the edit cursor to that line (thus highlighting it, see cursor_moved
+    above), and make sure it is visible in the window.
 
     This requires:
     * Find the QTextBlock with a Statement containing that PC value.
@@ -469,7 +526,13 @@ class SourceEditor( QPlainTextEdit ) :
     def show_pc_line( self, PC ) :
         '''
         If we have main_window.clean_assembly, then we can rely on the S.PC values
-        in the Statements in all the textblocks. If not, we can do nothing.
+        in the Statements in all the textblocks. This will normally be the case, as
+        the user will have clicked LOAD to load the emulator before starting it.
+
+        However, the user could do a LOAD, run the emulator, make a change in
+        the source code without clicking LOAD, then run the emulator again.
+        Once the document has changed in any way we can't rely on the PC
+        vaues assembled for each statement.
         '''
         if not self.main_window.clean_assembly :
             return
@@ -480,7 +543,8 @@ class SourceEditor( QPlainTextEdit ) :
         this_block = self.textCursor().block()
         '''
         Scan forward looking for the matching PC, stopping at the end
-        of the document. N.B. empty statements have S.PC=None.
+        of the document. N.B. empty statements have S.PC=None, which
+        will match "unequal" in the test below.
         '''
         current_block = this_block
         while current_block.isValid() :
@@ -490,9 +554,9 @@ class SourceEditor( QPlainTextEdit ) :
                 break
             current_block = current_block.next()
         '''
-        If that search failed, then current_block.isValid is False (end of
-        document). Try again starting from the first line of the document
-        down to here.
+        If that search failed, then current_block.isValid is False, meaning
+        "end of document". Try again starting from the first line of the
+        document down to here.
         '''
         if not current_block.isValid() :
             current_block = self.document().firstBlock()
@@ -509,19 +573,22 @@ class SourceEditor( QPlainTextEdit ) :
                 '''
                 return
         '''
-        Make current_block the current cursor line (which invokes
-        cursor_moved, above) and ensure it is visible. It will not
-        necessarily be centered. If it was already visible on the screen,
-        nothing happens.
+        We found a matching PC value on current_block. Make the line the
+        current cursor line (which invokes cursor_moved, above) and ensure it
+        is visible. It will not necessarily be centered; if it was already
+        visible on the screen, the display does not scroll.
         '''
         self.setTextCursor( QTextCursor( current_block ) )
         self.ensureCursorVisible()
 
     '''
     Clear the breakpoint status of a particular text block, if it has that
-    status. The status has to be removed from chip8, but the tricky bit is
-    getting the matching extra-selection out of the list. The extra selection
-    has a text cursor. We match this block that cursor on the basis that both
+    status. We use the QTextBlock.userState field to signal breakpoint
+    status. Per Qt docs userState() returns -1 unless it been set.
+
+    First we ask the emulator to forget this breakpoint. Then we get
+    the matching extra-selection out of that list. The extra selection has a
+    text cursor. We match this block to that cursor on the basis that both
     have the same document position value.
 
     Note that the following code modifies a list that is controlling
@@ -542,8 +609,10 @@ class SourceEditor( QPlainTextEdit ) :
             text_block.setUserState( -1 )
 
     '''
-    The following methods are dispatched from the keyPressEvent handler, below
-    (except for replace_all which is called only from the Find dialog).
+        KEY ACTIONS
+
+    The following methods are dispatched from the keyPressEvent() method,
+    below (except for replace_all which is called only from the Find dialog).
     '''
 
     '''
@@ -573,15 +642,15 @@ class SourceEditor( QPlainTextEdit ) :
             (bp_state==1) or it is not elegible for breakpoints (because
             S.PC is None, indicating it has not been assembled, or because
             it has error status).
-            In all cases, clear any bp status; in the latter, beep.
+            In all cases, clear any bp status; in the error case, beep.
             '''
             self.clear_bp_status( this_block )
             if bp_state != 1 : QApplication.beep()
 
     '''
-    This is called on the control-E key event. Starting from the line after
-    the current line, scan forward for a textblock in which the Statement has
-    either expr_error or text_error.
+    Find the next line having an error, if any do, and make it the current
+    line. Starting from the line after the current line, scan forward for a
+    textblock in which the Statement has either expr_error or text_error.
     '''
     def find_next_error_line( self ) :
         this_block = self.textCursor().block()
@@ -594,7 +663,7 @@ class SourceEditor( QPlainTextEdit ) :
             next_block = next_block.next()
         if not next_block.isValid() :
             '''
-            Try again from the top down.
+            End of document, try again from the top down.
             '''
             next_block = self.document().firstBlock()
             while next_block != this_block :
@@ -617,7 +686,8 @@ class SourceEditor( QPlainTextEdit ) :
     until the user clicks Close or hits ESC. Then it returns a code that we
     don't care about.
 
-    While the dialog is running, it may call into the following methods.
+    While the dialog is running, it may call into the following methods by
+    way of its "parent" reference.
     '''
     def start_find( self ) :
         retcode = self.find_dialog.exec_()
@@ -627,15 +697,23 @@ class SourceEditor( QPlainTextEdit ) :
     find_prior. The only difference between them is the flag value and
     which end of the document you go to, if you want to wrap.
 
+    We use the built-in QTextDocument.find() method, which accepts flags
+    for case sensitivity (we have it always on) and search direction.
+
     This method returns True when it found a match, and False when not.
-    The only caller that cares is the replace_all method.
+    When a match is found, that line is made the current line.
     '''
     def find_it( self, forward=True, wrap=True ) :
         find_flag = QTextDocument.FindCaseSensitively
         if not forward :
             find_flag |= QTextDocument.FindBackward
         '''
-        Execute a find starting at the current selection, self.textCursor()
+        Execute a find: the parameters to QTextDocument.find are
+        * text string to match
+        * text cursor for starting point
+        * flags for direction and case
+        It returns a new text cursor which contains a selection of
+        the matching text if any is found, else no selection.
         '''
         new_cursor = self.document().find(
             self.find_dialog.find_text.text(),
@@ -644,8 +722,8 @@ class SourceEditor( QPlainTextEdit ) :
         )
         if not new_cursor.hasSelection() :
             '''
-            Search failed from the current point. If the caller wants, try it
-            again from the other end of the document.
+            Search failed from the current point. If the caller wants, repeat
+            the find operation from the other end of the document.
             '''
             if wrap :
                 start_cursor = QTextCursor(
@@ -658,12 +736,15 @@ class SourceEditor( QPlainTextEdit ) :
                     options= find_flag
                 )
             '''
-            If that didn't work, or wasn't wanted, return False.
+            If the wrap flag was off, or the repeat search found no match,
+            return False.
             '''
             if not new_cursor.hasSelection() :
                 return False
         '''
-        Eureka! literally. Make that the edit selection and make it visible.
+        Eureka! (Literally!) Make the matched text the edit selection --
+        which will invoke cursor_moved() above -- and make sure that line is
+        visible in the edit window.
         '''
         self.setTextCursor( new_cursor )
         self.ensureCursorVisible()
@@ -690,12 +771,19 @@ class SourceEditor( QPlainTextEdit ) :
     '''
     This is called from the REPLACE button of the Find dialog, and from the
     following ^= and ^t methods. We use the contents of the Find dialog
-    Replace lineedit to replace the current selection -- which we ASSUME is
-    the result of having done a Find. But we don't check that.
+    Replace field to replace the current selection -- which we ASSUME is the
+    result of having done a Find. But we don't check that.
 
-    It would be possible to check; define a flag that is set True on a
-    successful Find, and set False on any change of selection. It could be
-    done here but I don't think it's necessary.
+    That has two possibly bad effects. One, if the current selection is
+    empty, ^= or the Replace button inserts the Replace text at the cursor.
+    And if the current selection is non-empty (but not the result of a Find),
+    ^= or the Replace button replaces it anyway.
+
+    It would be possible to check. For the first case, don't do a replace
+    when the current selection is empty. For the second, define a flag that
+    is set True on a successful Find, and set False on any change of
+    selection.
+
     '''
     def replace_selection( self ) :
         replace_text = self.find_dialog.replace_text.text()
@@ -782,6 +870,7 @@ to
        * control-shift-G to search backward to the prior match
        * control-equals to replace
        * control-T to replace and find again
+
     '''
     def keyPressEvent(self, event: QKeyEvent ) -> None :
         '''
@@ -835,6 +924,7 @@ to
 
 
 '''
+
     Define the window
 
 Our window is based on QMainWindow, which simplifies creating and managing
@@ -874,8 +964,8 @@ class SourceWindow( QMainWindow ) :
 
         '''
         Create a flag that shows whether the current source has been
-        assembled and not yet edited since then. Set in do_assembly()
-        and document_changed(), tested in cursor_moved().
+        assembled and not yet edited since then. Set in do_assembly() and
+        document_changed(); tested in cursor_moved() and show_pc_line().
         '''
         self.clean_assembly = False
 
@@ -1066,6 +1156,11 @@ class SourceWindow( QMainWindow ) :
             QMessageBox.warning( self, title, msg )
             self.highlighter.rehighlight()
             return None
+        else:
+            '''
+            Clean assembly. re-highlight the document to make sure any error
+            colors are cleared. Note a clean assembly. Return the executable code.
+            '''
         self.highlighter.rehighlight()
         self.clean_assembly = True
         return mem_load
@@ -1080,7 +1175,7 @@ class SourceWindow( QMainWindow ) :
 
     '''
     This method is called when the LOAD button is clicked.
-    It performs the assembly and if all is good,
+    It performs the assembly and, if all is good,
     it resets the chip8 memory with a new memory load.
     '''
     def load_clicked( self ) :
@@ -1168,6 +1263,7 @@ class SourceWindow( QMainWindow ) :
             file-open or file-save operation,
             * a filter string that would limit the available file suffixes
             but since there are no established CHIP-8 suffixes, don't do it.
+
             The return is a tuple, (file-path, chosen-filter), and we ignore
             the latter. If the user hits Cancel, the file-path is null.
             '''
