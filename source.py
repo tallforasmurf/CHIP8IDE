@@ -200,6 +200,19 @@ In this application, the highligher has these jobs:
     * when the statement is not valid, make the line turn INVALID_LINE_COLOR.
 
 Validation is done by the phase_one() function in module assembler1.
+
+While the user is entering and editing a statement, the statement may be
+invalid much of the time. The phase_one() method will often note errors that
+only exist because the user hasn't finished typing a word. The next keystroke
+might make the statement valid, and the following keystroke might make it
+invalid again, and so on. Hopefully, when the edit cursor moves on to another
+line, the final version of the current statement will be valid.
+
+When the current text is marked invalid, we paint the statement with the
+error background color. However, that is masked by the current-line color.
+Only when the cursor finally moves away from an invalid statement is the
+error color and message seen.
+
 '''
 
 '''
