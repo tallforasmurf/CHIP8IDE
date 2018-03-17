@@ -29,27 +29,29 @@ __email__ = "davecortesi@gmail.com"
 This is a sub-module of the source.py module, which implements the source
 editor window.
 
-The code here implements the initial assembly syntax check, which is called
-from the QSyntaxHighlighter attached to the edit document. Each time a line
-is modified the Syntax Highlighter is called. It calls phase_one() in this
-module to render that source line into a Statement object, which is stored in
-the UserData field of the QTextBlock.
+The code here implements the initial assembly syntax check, in which we
+verify the syntactic/lexical validity of a statement and when it is valid, we
+record some useful information about it. It is also responsible for creating
+a Statement object to save data about the statement.
 
-A number of errors are caught here and reported as two fields of the
-Statement object. The user is notified by the editor when a statement is
-invalid.
+This is called from the QSyntaxHighlighter attached to the edit document.
+Each time a line is modified, even by one keystroke, the Syntax Highlighter
+is called; and it calls phase_one() below.
 
-When the statement text is valid, the resulting Statement object has the info
-needed to complete the assembly later, in the assemble() function of the
-assemble2 module.
+A number of errors are caught here and recorded in the Statement object.
+
+When the statement text is valid, the Statement object has the info needed to
+complete the assembly later, in the assemble() function of the assemble2
+module.
 
 '''
 import logging
 from typing import List, Union
-'''
-Define exported names.
 
-This module exports just the phase_one function.
+'''
+    Define exported names.
+
+This module exports just the phase_one() function.
 All other defined names are internal to the module.
 '''
 __all__ = [ 'phase_one' ]
@@ -85,14 +87,13 @@ The regex for each specific directive or opcode needs to be fenced with
 the \b word-break test. Otherwise we tend to recognize opcodes at the start
 or end of innocent labels.
 '''
-
 import regex
 
 '''
 List of Directive opcodes. A search for these is the first item in the
-tokenizer regex. It was important that they be first so that the ORG directive
-would be recognized ahead of the search for the OR opcode -- however that
-is no longer an issue since the insertion of the \b markers.
+tokenizer regex. It was important that they be first mainly so that the ORG
+directive is recognized ahead of the search for the OR opcode. However that
+is no longer an issue since I inserted the \b markers.
 '''
 
 directives = [
@@ -144,7 +145,8 @@ opcodes = [
     ]
 
 '''
-List of V-reg names. The search for these is third in the tokenizer.
+List of V-reg names, v0, v1... vF. The search for these is third in the
+tokenizer.
 '''
 
 v_regs = [ r'\bv'+c+r'\b' for c in '0123456789ABCDEF' ]
@@ -152,21 +154,25 @@ v_regs = [ r'\bv'+c+r'\b' for c in '0123456789ABCDEF' ]
 '''
 
 Define and name the legal tokens as (token-class-name, regex-to-match-it).
+Most of these are specific matches, for example the LABEL class matches only
+to a word plus colon at the head of the line.
 
-They must be listed from explicit to general, i.e. look for specific opcodes
-before the more general WORD token.
+However three classes are composed by |-joining the groups defined above
+to form ( rex1 | rex2 | ... ). Given that the massive regex below, which
+incorporates these lengthy or-groups, is applied every keystroke, one can
+see how good performance by regex is important.
 
-Notes re the STRING token. It only recognizes the use of 'single' quotes; it
+Notes re the STRING regex. It only recognizes the use of 'single' quotes; it
 will not recognize double-quotes. It does recognize a null string (which will
 be assembled as DS 0). The assembler doc says that to include a single quote,
 double it: 'MA''AM'. In tokenizing, that just resolves to two string tokens,
 STRING(MA) and STRING(AM). While processing tokens we note this and glue them
-back together.
+back together as STRING(MA'AM).
 '''
 
 token_specs = [
     ( 'LABEL',     r'^\s*[A-Z0-9_]+\s*\:' ), # Word: anchored to ^ is a label
-    ( 'WHITE',     '\s+'                  ), # ignored whitespace
+    ( 'WHITE',     r'\s+'                 ), # ignored whitespace
     ( 'DIRECTIVE', '|'.join( directives ) ), # directives
     ( 'OPCODE',    '|'.join( opcodes )    ), # known opcodes
     ( 'VREG',      '|'.join( v_regs )     ), # v regs
@@ -176,9 +182,9 @@ token_specs = [
     ( 'DSREG',     r'\bST\b'              ),
     ( 'COMMA',     r','                   ), # comma delimits operands
     ( 'DECIMAL',   r'[0-9]+'              ), # decimal has no prefix
-    ( 'HEX',       r'#[0-9A-F]+'          ), # hex
+    ( 'HEX',       r'#[0-9A-F]+'          ), # hex signaled by #ddd..
     ( 'OCTAL',     r'@[0-7]+'             ), # a few PDP folks around in '76
-    ( 'BINARY',    r'\$[01\.]+'           ), # $1..1..11
+    ( 'BINARY',    r'\$[01\.]+'           ), # $ddd is binary, allows 1..1..11
     ( 'STRING',    r"'[^']*'"             ), # basic 'string'
     ( 'EXPOPS',    r'[()+\-~!<>*/&|^%]'   ), # expression stuff
     ( 'WORD',      r'[A-Z0-9_]+'          ), # words that are not reserved
@@ -218,10 +224,11 @@ class Token() :
 
     Regexes for statement recognition
 
-After tokenizing using the above, we process the tokens in sequence, and
-build up a synopsis, or signature, of the statement composed of one or a few
-characters per token. There are a limited number of signatures possible, and
-any statement whose signature is not one of them, is automatically invalid.
+After tokenizing the statement using the above, we process the recognized
+tokens in sequence to build up a synopsis, or signature, of the statement
+composed of one or a few characters per token. There are a limited number of
+signatures possible, and any statement whose signature is not one of them, is
+automatically invalid.
 
 Labels and comments are not reflected in the signature. OPCODE and DIRECTIVE
 tokens go in as themselves ('LD', 'ORG'). Other tokens are converted to the
@@ -252,10 +259,9 @@ summary_chars = {
 
 '''
 
-Among the resulting signatures, any that do not end with an expression are
-simple literals with no varying parts. For quick recognition these are filed
-in this dict. The key is the signature string; and the value, a code for the
-instruction format.
+The signatures for valid statements that do not end with an expression are
+simple literals. For quick recognition these are filed in this dict. The key
+is the signature string; and the value, a code for the instruction format.
 
 '''
 signature_dict = {
@@ -351,8 +357,6 @@ def LOOKUP( name:str ) -> int :
 '''
     Parsing Phase 1: Recognition
 
-This phase of parsing is called from the QSyntaxHighligher.
-
 For this application we do not need to parse a general-purpose language, but
 only recognize a relatively small set of valid statement forms. The only
 complicated part is that we are supposed to support expressions. Both the
@@ -370,8 +374,8 @@ Nevertheless we need to handle ones like (to concoct a ridiculous example),
 
 I considered taking this as an opportunity to write my own parser for
 expressions -- but no. There are only cosmetic differences between CHIPPER
-literals and Python ones (#073 vs. 0x073, $10001000 vs. b'10001000', shift
-and exponent operators) and once those are fixed, we can use Python's
+literals and Python ones (#073 vs. 0x073, etc), and a couple of operators use
+different characters. Once those are translated, we can use Python's
 perfectly good parser on them.
 
 So, phase 1 of parsing proceeds in these steps:
@@ -381,9 +385,9 @@ So, phase 1 of parsing proceeds in these steps:
     * Tokenize the statement with the t_rex regex, producing a list
       of tokens.
 
-    * Strip off a label (LABEL token or WORD EQU), noting the label in S.defined_name
+    * Strip off a label (LABEL, or WORD EQU), noting the label in S.defined_name
 
-    * Strip off a COMMENT token, which will be the last if it exists.
+    * Strip off a COMMENT token, which will be the last one if it exists.
 
     * If there are no tokens left (statement is only a label and/or a comment)
       set S.is_valid and return.
@@ -536,8 +540,9 @@ def phase_one( statement_text: str, S : Statement ) :
             sig_item_list.append( token.t_value.upper() ) # LD or ORG or DRAW
             continue
         '''
-        Fetch the summary char for this token type. The only token type
-        not in summary_chars is GARBAGE.
+        Fetch the summary char for this token type. The only token types
+        with a summary char are the operands. If the current token is a
+        misplaced opcode, for example, this test will fail.
         '''
         if not token.t_type in summary_chars :
             S.text_error = True
@@ -600,12 +605,16 @@ def phase_one( statement_text: str, S : Statement ) :
 
     '''
     If any errors were found in that loop, quit now.
-    Otherwise, save the (last or only) expression if any.
     '''
     if S.text_error :
         return
+
+    '''
+    All good; save the (last or only) expression if any.
+    '''
     if expression :
         S.expressions.append( expression )
+
     '''
     Compress the signature to a single string and look it up. It will likely
     be in signature_dict; if not, it should be recognized by signature_regex.
@@ -618,16 +627,19 @@ def phase_one( statement_text: str, S : Statement ) :
         m = signature_regex.fullmatch( signature )
         if m : # is not None,
             instruction_form = m.lastgroup
+            '''
+            Validate one special case.
+            '''
             if instruction_form == 'JPXADR' and S.reg_1 != 0 :
                 S.text_error = True
                 S.error_pos = 0
                 S.error_msg = 'Must use V0'
         else :
             '''
-            The statement was composed of recognizable tokens but in some
+            The statement was composed of recognizable tokens, but in some
             order that made no sense, like "STM :V5" or "EQU = 5". In this
-            case we know the statement is wrong, so return S now, but
-            we do not know where the position of the error is.
+            case we know the statement is wrong, but we do not know where the
+            position of the error is.
             '''
             S.text_error = True
             S.error_pos = 0
@@ -641,14 +653,14 @@ def phase_one( statement_text: str, S : Statement ) :
 
     '''
     We know the instruction form code; store it in S.form for use
-    during the assembly.
+    during the second assembly phase.
     '''
     S.form = instruction_form
 
     '''
-    The statement looks valid so far but we have not actually parsed the
-    expression(s) if any. They are stowed in S.expressions as a list of
-    lists of tokens.
+    The statement looks valid so far, but we have not actually parsed the
+    expression(s) if any. They are stowed in S.expressions as a list of lists
+    of tokens.
 
     For each expression, translate the tokens to Python syntax to form a Python
     expression text. Use the built-in compile() function to parse and convert
@@ -685,13 +697,15 @@ def phase_one( statement_text: str, S : Statement ) :
             elif token.t_type == 'BINARY' :
                 # $...1..1 -> $0001001
                 token.t_value = token.t_value.replace('.','0')
-                # $0001001 -> b'0001001'
+                # $0001001 -> 0b0001001
                 python_expression_items.append( "0b" + token.t_value[1:] )
             elif token.t_type == 'OCTAL' :
                 # @377 -> 0o377
                 python_expression_items.append( '0o0' + token.t_value[1:] )
             elif token.t_type == 'STRING' :
                 # 'ma'am' -> bytes("MA'AM",encoding="ASCII")
+                # note that an encoding error if any, happens when the
+                # expression is executed, later.
                 python_expression_items.append( 'bytes("' + token.t_value[1:-1].upper() + '", encoding="ASCII")' )
             elif token.t_type == 'WORD' :
                 # LABEL -> LOOKUP("LABEL")
@@ -716,6 +730,10 @@ def phase_one( statement_text: str, S : Statement ) :
 
         python_expression = ' '.join( python_expression_items )
 
+        '''
+        Compile the translated expression and save the code object that
+        results for later execution in the second phase.
+        '''
         try :
             code_obj = None
             code_obj = compile( python_expression, 'chip8ide assembler', 'eval' )
@@ -730,19 +748,20 @@ def phase_one( statement_text: str, S : Statement ) :
             break
 
     '''
-    Errors? Quit. Else save code objects in S. Copy the list
-    so we don't leave S pointing to our local.
+    Errors? Quit.
     '''
     if S.text_error :
         return
-
+    '''
+    Save code objects in S. Copy the list so we don't leave S pointing to our
+    local memory.
+    '''
     S.expressions = list( code_list )
 
     '''
     If the statement got through all that unscathed it is good -- assuming
     any names it refers to are eventually defined! Now try to figure out how
-    many bytes the statement will evaluate to. Also check for a couple of
-    other errors.
+    many bytes the statement will evaluate to.
 
     The vast majority of statements assemble to 2 bytes, so assume that.
     '''
