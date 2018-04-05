@@ -41,7 +41,7 @@ If no errors are found, we return a list of ints that represents the binary
 value of this code, from emulated memory location 0x0200 up through the
 last non-zero byte.
 
-When errors are found update the Statement objects as necessary (setting
+When errors are found, we update the Statement objects as necessary (setting
 the S.expr_error flag) and return None. The Check handler then takes appropriate
 action to inform the user.
 
@@ -60,9 +60,9 @@ from statement_class import Statement
 
 Symbol table:
 
-On our first pass through the statements we note defined names in this dict.
-The LOOKUP() function returns the value of a name if it is defined,
-or it raises an IndexError with an appropriate message.
+On our first pass through the statements we note the values of defined names
+in this dict. The LOOKUP() function returns the value of a name if it is
+defined, or it raises an IndexError with an appropriate message.
 
 '''
 
@@ -98,13 +98,15 @@ binary arithmetic, but because of a coding error many statements distant from
 the expression, and strict application of the limits will help the user find
 such a bug faster.
 
-The following function evaluates an expression from S -- in the form of a
-Python code-object -- for value in a certain range. It throws an exception
-with a helpful message in case of an error. Possible exceptions:
-  IndexError( "Symbol X is undefined") from LOOKUP
-  ZeroDivisionError( "division by zero" ) from eval
-  Something else? from eval
-  ValueError( "Inappropriate expression value N" )
+The following function evaluates an expression in the form of a Python
+code-object and checks that is value is in a certain range. It throws an
+exception with a helpful message in case of an error.
+
+Possible exceptions:
+    IndexError( "Symbol X is undefined") from LOOKUP
+    ZeroDivisionError( "division by zero" ) from eval
+    ValueError( "Inappropriate expression value N" )
+    Something else? raised by eval()
 
 '''
 
@@ -122,13 +124,13 @@ The following code implements all opcodes and directives except DS, EQU and ORG.
 Instructions that do not involve expression evaluation can be assembled by a
 simple lambda expression on the Statement object, returning a list of 2 bytes.
 
-The remaining instructions fit one of four patterns:
+The instructions that do take expressions fit one of only four patterns:
 
 opcode, reg, byte
 
 3sKK Skip next instruction if Vs == KK
 4sKK Skip next instruction if Vs != KK
-CtKK Let Vt = Random Byte (KK =Mask)
+CtKK Let Vt = Random Byte (KK = Mask)
 6tKK Let Vt = KK
 7tKK Let Vt = VX + KK
 
@@ -298,7 +300,7 @@ from the program.
 * Insert or delete any number of statements between the CALL and the label,
 changing the value of DO_SUB.
 
-* Delete the DO_SUB line and replace it at point in the program above or
+* Delete the DO_SUB line and replace it at any point in the program above or
 below the CALL at any future time.
 
 * Enter a duplicate DO_SUB label, then maybe go back to delete one.
@@ -386,9 +388,6 @@ These rules permit code like this, a reasonable use of EQU, DS and ORG:
           DB ...
           ORG BUFR+BSIZE
 
-
-The argument to assemble() is the first QTextBlock of the source document,
-which can be used as the basis of an iterator over lines in sequence.
 '''
 
 from PyQt5.QtGui import QTextBlock
@@ -397,8 +396,14 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
     global SYMBOLS, LOOKUP
 
     '''
-    Iterate over all the text blocks. Define all labels. Count
-    any text_errors. Implement EQU, ORG and DS.
+
+    The argument to assemble() is the first QTextBlock of the source
+    document, which can be used as the basis of an iterator over lines in
+    sequence. We iterate over all the text blocks using the .next_block() method
+    of QTextBlock. A returned block with is_valid() false indicates the end.
+
+    In this first pass, define all labels; count any text_errors; and
+    implement EQU, ORG and DS.
 
     Note that the PC starts at 0x0200; this is a historical convention. The
     original CHIP-8 had the actual emulator code below that address, so
@@ -549,8 +554,11 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
         return [ -1, text_errors, expr_errors ]
 
     '''
-    Iterate once more over all text blocks. This time, generate their byte
-    values and store them in a big array of bytes which we will return.
+    All DS, EQU and ORG statements have been processed. Now iterate once more
+    over all text blocks. This time, generate the byte values of each
+    statement and store them in a big array of bytes which we will return.
+    Also, store each normal statement's byte value and PC offset into its
+    Statement structure, so they can be displayed by the editor.
 
     It is still possible to get errors because it is only now that we try to
     evaluate expressions in opcodes. When exceptions occur in the subordinate
@@ -610,7 +618,7 @@ def assemble( first_text_block: QTextBlock ) -> List[int] :
         return [ -1, text_errors, expr_errors ]
 
     '''
-    Return the slice of the memory image from 0x0200 through the last
-    byte generated.
+    Successful assembly; return the slice of the memory image from 0x0200
+    through the last byte generated.
     '''
     return memory_image[ 0x0200 : top_address ]
