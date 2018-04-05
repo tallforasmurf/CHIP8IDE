@@ -36,12 +36,14 @@ a Statement object to save data about the statement.
 
 This is called from the QSyntaxHighlighter attached to the edit document.
 Each time a line is modified, even by one keystroke, the Syntax Highlighter
-is called; and it calls phase_one() below.
+calls phase_one() below.
 
-A number of errors are caught here and recorded in the Statement object.
+A number of errors are caught here and recorded in the Statement object. When
+errors are noted, the Syntax Highlighter colors the statement pink in the
+edit window.
 
 When the statement text is valid, the Statement object has the info needed to
-complete the assembly later, in the assemble() function of the assemble2
+complete the assembly later, during the assemble() function of the assemble2
 module.
 
 '''
@@ -73,27 +75,25 @@ from chip8 import R as RCODES
 
 Refer to https://docs.python.org/dev/library/re.html#writing-a-tokenizer for
 some insight into what's going on here. TL;DR: we set up a list of named
-regular expressions to recognize all valid token forms that can occur.
-
-Note the regexen are processed with the ignore-case flag, so capitalization
-doesn't matter.
+regular expressions, one to recognize each valid token form that can occur.
 
 We use the pypi module regex which is faster and has more features than the
 standard re. (Although no special regex features are used, so the standard
 re module would work. Just not quite as fast. And we need to be fast, because
 the regexes get exercised for EVERY FUCKING KEYSTROKE in the editor. Really.)
 
-The regex for each specific directive or opcode needs to be fenced with
-the \b word-break test. Otherwise we tend to recognize opcodes at the start
-or end of innocent labels.
+Regex coding notes: all have the ignore-case flag, so capitalization doesn't
+matter. The regex for each specific directive or opcode word is fenced with
+the \b word-break test. That avoids seeing opcodes at the start or end of
+innocent labels.
 '''
 import regex
 
 '''
 List of Directive opcodes. A search for these is the first item in the
-tokenizer regex. It was important that they be first mainly so that the ORG
-directive is recognized ahead of the search for the OR opcode. However that
-is no longer an issue since I inserted the \b markers.
+tokenizer regex. Initially that was done as a hack to recognize the ORG
+directive ahead of the search for the OR opcode. However that is no longer an
+issue since I inserted the \b markers.
 '''
 
 directives = [
@@ -153,21 +153,21 @@ v_regs = [ r'\bv'+c+r'\b' for c in '0123456789ABCDEF' ]
 
 '''
 
-Define and name the legal tokens as (token-class-name, regex-to-match-it).
+Define and name the legal token types, each as a tuple (token-class-name,
+regex-to-match-it).
+
 Most of these are specific matches, for example the LABEL class matches only
 to a word plus colon at the head of the line.
 
-However three classes are composed by |-joining the groups defined above
-to form ( rex1 | rex2 | ... ). Given that the massive regex below, which
-incorporates these lengthy or-groups, is applied every keystroke, one can
-see how good performance by regex is important.
+The three classes DIRECTIVE, OPCODE and VREG are composed by |-joining the
+items in one of the groups above to form a compound ( rex1 | rex2 | ... ).
 
 Notes re the STRING regex. It only recognizes the use of 'single' quotes; it
 will not recognize double-quotes. It does recognize a null string (which will
-be assembled as DS 0). The assembler doc says that to include a single quote,
-double it: 'MA''AM'. In tokenizing, that just resolves to two string tokens,
-STRING(MA) and STRING(AM). While processing tokens we note this and glue them
-back together as STRING(MA'AM).
+eventually be assembled as a DS 0 directive). The assembler doc says that to
+include a single quote, double it: 'MA''AM'. In tokenizing, that just
+resolves to two string tokens, STRING(MA) and STRING(AM). While processing
+tokens we note this and glue them back together as STRING(MA'AM).
 '''
 
 token_specs = [
@@ -201,6 +201,9 @@ Transform the token_specs list into one massive regex of the form,
 that is, an or-alternation of named match groups. The result is not something
 a human would like to edit, but the regex module handles it just fine.
 
+Given that this massive regex is applied every keystroke, one can see how
+good performance by regex is important.
+
 '''
 
 token_expression = '|'.join(
@@ -211,7 +214,7 @@ t_rex = regex.compile( token_expression, regex.IGNORECASE | regex.ASCII )
 
 '''
 Define a simple Token class. This would be a legitimate use of a
-namedTuple, but that is essentially the following in any case.
+NamedTuple, but that is essentially the following in any case.
 '''
 class Token() :
     def __init__(self, t_type='', t_value=None, t_start=0, t_end=0 ) :
@@ -225,19 +228,22 @@ class Token() :
     Regexes for statement recognition
 
 After tokenizing the statement using the above, we process the recognized
-tokens in sequence to build up a synopsis, or signature, of the statement
-composed of one or a few characters per token. There are a limited number of
-signatures possible, and any statement whose signature is not one of them, is
-automatically invalid.
+tokens in sequence to build up a synopsis, or signature, of the statement.
+
+The signature is composed of one, or a few, fixed characters per token, so it
+represents a summary of the token classes in the statement. There are a
+limited number of signatures possible, and any statement whose signature is
+not one of them, is automatically invalid.
 
 Labels and comments are not reflected in the signature. OPCODE and DIRECTIVE
-tokens go in as themselves ('LD', 'ORG'). Other tokens are converted to the
-single letters in the following table. Any token that could be part of an
+tokens go in as themselves ('LD', 'ORG'). Other token types are converted to
+the single letters in the following table. Any token that could be part of an
 expression is represented as 'V'. (The actual validity of an expression is
 determined in a separate step.)
 
 Thus the signature for "ld v5,31" is "LDR,V" (opcode LD, R for the register,
-comma for the comma, V for the decimal token).
+comma for the comma, V for the decimal token). Any other valid load-register
+statement would have the same signature.
 
 '''
 
@@ -259,7 +265,7 @@ summary_chars = {
 
 '''
 
-The signatures for valid statements that do not end with an expression are
+The signatures of the valid statements that do not end with an expression are
 simple literals. For quick recognition these are filed in this dict. The key
 is the signature string; and the value, a code for the instruction format.
 
@@ -338,16 +344,17 @@ signature_regex = regex.compile( signature_expression )
 '''
     Assembly-time Symbol Table
 
-Expressions are translated into Python expressions. Each WORD token is
-translated into a call on LOOKUP(word).
+Expressions in statements are translated into Python expressions. Each WORD
+token in an expression (which is a reference to some label) is translated
+into a call on LOOKUP(word).
 
 The name LOOKUP is resolved as a global at the time the eval() function is
-applied. When that is done in the namespace of this module, LOOKUP() is the
-following, which just returns a one (to avoid unintentional divide-by-zero
-errors).
+applied to evaluate the expression. When that is done in the namespace of
+this module, LOOKUP() is the following, which just returns 1 (to avoid
+unintentional divide-by-zero errors).
 
-During the real assembly (in the assembler2 module), LOOKUP is defined
-to return the value of a name, or None if the name is not defined.
+During the real assembly (in the assembler2 module), LOOKUP is defined to
+return the actual value of the word, or None if it is not defined.
 
 '''
 
@@ -373,10 +380,11 @@ Nevertheless we need to handle ones like (to concoct a ridiculous example),
     LD V2, (BUFEND - BUFSIZE) & ( #073 < 2 ) % 7
 
 I considered taking this as an opportunity to write my own parser for
-expressions -- but no. There are only cosmetic differences between CHIPPER
-literals and Python ones (#073 vs. 0x073, etc), and a couple of operators use
-different characters. Once those are translated, we can use Python's
-perfectly good parser on them.
+expressions -- but that would be masochism. There are only cosmetic
+differences between CHIPPER literals and Python ones (#073 vs. 0x073, etc),
+and a couple of operators use different characters. Once those are
+translated, we can use Python's perfectly good parser to validate them and
+(in the assemble2 phase) Python's eval to evaluate them.
 
 So, phase 1 of parsing proceeds in these steps:
 
@@ -389,7 +397,7 @@ So, phase 1 of parsing proceeds in these steps:
 
     * Strip off a COMMENT token, which will be the last one if it exists.
 
-    * If there are no tokens left (statement is only a label and/or a comment)
+    * If there are no tokens left (statement was only a label and/or a comment)
       set S.is_valid and return.
 
     * Scan the remaining list of tokens to do two things:
@@ -399,23 +407,27 @@ So, phase 1 of parsing proceeds in these steps:
       - Save the tokens of expression operands as lists of tokens.
 
     * Check the signature against signature_dict and signature_regex. If it
-      doesn't match, return S with is_valid False.
+      doesn't match, the statement is bad. Return S with is_valid False.
 
     * Store the form of the statement yielded by signature_dict/signature_regex.
 
-    * Convert any expression(s) into Python form, apply compile() to them.
+    * Convert any expression(s) into Python form and apply the built in Python
+      compile() to them.
 
     * If compile() reports an error, return S with is_valid False.
 
-    * Store the code object(s) in S.expressions for use at assembly time.
+    * Store the code object(s) returned by compile() in S.expressions for
+      use at assembly time.
 
     * Set the assembled length of the instruction based on opcode and operands.
 
-    * Set S.is_valid to True
+    * Return S with is_valid True.
 
 Error handling: a number of errors are detected. For each we leave a message
-text in S.error_msg and, when it is known, the start of the bad token in
-S.error_pos. It is up to the caller to convey this info to the user.
+text in S.error_msg and, when we know it, the index of the start of the bad
+token in S.error_pos. It is up to the caller to convey this info to the user.
+(The Syntax Highlighter makes the statement pink and the editor puts the
+error text in the status line.)
 
 '''
 
@@ -450,13 +462,20 @@ def phase_one( statement_text: str, S : Statement ) :
             break
 
         '''
+        We have a recognizable token, pull its type and value from the regex
+        match. match.lastgroup() is the ?P<NAME> from the matching regex, and
+        match.group() is the text that was actually matched to the regex.
+        '''
+
+        token_type = match.lastgroup
+        token_value = match.group( token_type )
+
+        '''
         If this is a STRING token and the one just prior was also, we
         have the situation of 'MA''AM', the doubled single quote, which
         tokenized as STRING('MA') STRING('AM'). Put the parts back together
         in that preceding token, removing one single-quote.
         '''
-        token_type = match.lastgroup
-        token_value = match.group( token_type )
 
         if token_type == 'STRING' \
            and tokens \
@@ -499,10 +518,11 @@ def phase_one( statement_text: str, S : Statement ) :
          and tokens[1].t_type == 'DIRECTIVE' \
          and ( 'EQU' == tokens[1].t_value.upper() or '=' == tokens[1].t_value ) :
             '''
-            WORD EQU expression (well, probably an expression, assume it is
-            for now). Strip only the word, storing it in S.defined_name
-            (being a WORD token it has already been uppercased). Leave
-            S.defined_value None. Also, normalize the EQU to a single form.
+            The statement is "WORD EQU expression" (well, probably an
+            expression, assume it is for now). Strip only the word, storing
+            it in S.defined_name (being a WORD token it has already been
+            uppercased). Leave S.defined_value None. Also, normalize the EQU
+            to a single form.
             '''
             tokens[1].t_value = 'EQU' # in case it said "="
             S.defined_name = tokens[0].t_value
@@ -537,7 +557,7 @@ def phase_one( statement_text: str, S : Statement ) :
         ones, the lookup later will fail.
         '''
         if token.t_type == 'OPCODE' or token.t_type == 'DIRECTIVE' :
-            sig_item_list.append( token.t_value.upper() ) # LD or ORG or DRAW
+            sig_item_list.append( token.t_value.upper() ) # LD, ORG, DRAW, etc
             continue
         '''
         Fetch the summary char for this token type. The only token types
@@ -582,6 +602,7 @@ def phase_one( statement_text: str, S : Statement ) :
             elif S.reg_2 is None :
                 S.reg_2 = code
             else :
+                # third register operand? Not legal.
                 S.text_error = True
                 S.error_pos = token.t_start
                 S.error_msg = 'Invalid register operand'
@@ -711,11 +732,10 @@ def phase_one( statement_text: str, S : Statement ) :
                 # LABEL -> LOOKUP("LABEL")
                 python_expression_items.append( 'LOOKUP("' + token.t_value + '")' )
             else :
+                # remains only EXPOPS: ()+\-~!<>*/&|^% of which all but !<> are
+                # the same in Python expressions.
                 op = token.t_value
-                if op in '()+-~*/&|^%' :
-                    # ( ) + - ~ * / & | ^ % are python
-                    python_expression_items.append( op )
-                elif op == '!' :
+                if op == '!' :
                     # 2!4 -> 2**4
                     python_expression_items.append( '**' )
                 elif op == '<' :
@@ -724,9 +744,8 @@ def phase_one( statement_text: str, S : Statement ) :
                 elif op == '>':
                     # > -> >>
                     python_expression_items.append( '>>' )
-                else:
-                    logging.error('Error processing expression token type {} value {}'.format( token.t_type, op ) )
-                    python_expression_items.append( '!!' )
+                else : # op in ()+-~*/&|^%
+                    python_expression_items.append( op )
 
         python_expression = ' '.join( python_expression_items )
 
