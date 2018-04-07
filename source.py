@@ -595,6 +595,12 @@ class SourceEditor( QPlainTextEdit ) :
         self.ensureCursorVisible()
 
     '''
+    For convenience of File>Load, put the edit cursor at the first line.
+    '''
+    def cursor_to_home( self ) :
+        self.setTextCursor( QTextCursor( self.document().firstBlock() ) )
+
+    '''
     Clear the breakpoint status of a particular text block, if it has that
     status. We use the QTextBlock.userState field to signal breakpoint
     status. Per Qt docs userState() returns -1 unless it been set.
@@ -1222,16 +1228,19 @@ class SourceWindow( QMainWindow ) :
         return True # document not modified or choice==QMB.Discard
 
     '''
-    Set up a new document, either from File>Open or File>New.
-    Put the current file name as the window title; save the file path (if
-    given) as the window file path, and clear the modified flag if it is set.
-    Clear a field in the editor, too.
+    Set up a new document, either from File>Open, File>New, or File>Save_As.
+
+    If requested, clear the text document. Put the provided file name as the
+    window title. Save the file path (if given) as the window file path.
+    Clear the modified flag if it is set.
 
     This is also an opportune place to tell the emulator to clear all
     breakpoints. This is only called when the active file is new and can
     have no existing breakpoints.
     '''
-    def set_up_new_document( self, name: str, path: str = None ) :
+    def set_up_new_document( self, name: str, clear: bool = False, path: str = None ) :
+        if clear:
+            self.document.clear()
         self.document.setModified( False )
         self.editor.last_text_block = None
         self.setWindowModified( False )
@@ -1249,8 +1258,7 @@ class SourceWindow( QMainWindow ) :
     '''
     def file_new( self ) :
         if self.maybe_save( "File>New" ) :
-            self.document.clear()
-            self.set_up_new_document( "Untitled" )
+            self.set_up_new_document( "Untitled", clear=True )
 
     '''
     This method is called when File>Open is selected. Show the user
@@ -1329,23 +1337,22 @@ class SourceWindow( QMainWindow ) :
             File>Save onto this file after editing.
             '''
             (prefix, filename) = os.path.split( chosen_path )
-            self.set_up_new_document( filename, path=prefix )
+            self.set_up_new_document( name=filename, clear=True, path=prefix )
 
         except Exception as E:
             '''
-            It's a binary file. Convert to a source file, but we really do not
-            want to encourage File>Save which would wipe out the binary with
-            the source. So force it to an equivalent of New.
+            It's a binary file. Convert to a source file.
             '''
             source_string = disassemble( byte_string )
-            self.set_up_new_document( "Untitled" )
-            self.document.setModified( True )
+            self.set_up_new_document( name="Untitled", clear=True )
 
         '''
         Install the source string as the contents of our document.
         This applies the syntax highlighter to every line, btw.
         '''
         self.document.setPlainText( source_string )
+        self.editor.cursor_to_home( )
+        self.editor.repaint( )
         self.document.setModified( False )
 
         return True
@@ -1400,7 +1407,7 @@ class SourceWindow( QMainWindow ) :
         if 0 == len( chosen_path ) :
             return False
         (prefix, filename) = os.path.split( chosen_path )
-        self.set_up_new_document( filename, path=prefix )
+        self.set_up_new_document( name=filename, clear=False, path=prefix )
         return self.file_save()
 
 
