@@ -215,8 +215,11 @@ t_rex = regex.compile( token_expression, regex.IGNORECASE | regex.ASCII )
 '''
 Define a simple Token class. This would be a legitimate use of a
 NamedTuple, but that is essentially the following in any case.
+It is also a legit use of __slots__: class instances have exactly and
+only the four members and don't need a dict.
 '''
 class Token() :
+    __slots__ = ['t_type', 't_value', 't_start', 't_end']
     def __init__(self, t_type='', t_value=None, t_start=0, t_end=0 ) :
         self.t_type = t_type
         self.t_value = t_value
