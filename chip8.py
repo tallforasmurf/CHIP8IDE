@@ -487,13 +487,20 @@ def do_jump( INST: int, PC: int ) -> int :
 
 '''
 2xxx, CALL xxx
+
+As with 1XXX JUMP, a target less than 0x200 or above 0xFFE is an error.
+Also an error is a call when the call stack is full.
 '''
 def do_gosub( INST: int, PC: int ) -> int :
     global CALL_STACK
 
+    target = INST & 0x0FFF
+    if ( target < 0x0200 ) or ( target == 0x0FFF ) :
+        raise ValueError( emsg_format( EMSG_BAD_ADDRESS, INST, PC ) )
+
     if len( CALL_STACK ) < MAX_CALL_DEPTH :
         CALL_STACK.append( PC+2 )
-        return INST & 0x0FFF
+        return target
 
     raise ValueError( emsg_format( EMSG_BAD_CALL, INST, PC ) )
 
