@@ -164,7 +164,7 @@ There is one more thing to know about single step execution but it will be cover
 
 ## <a name='DP'></a>Display and keypad
 
-Open again open the source program `draw_the_key.asm` and click LOAD and RUN. This tiny program reads the next keypad key and displays that character, from `0` to `F`, on the screen.
+Once again open the source program `draw_the_key.asm` and click LOAD and RUN. This tiny program reads the next keypad key and displays that character, from `0` to `F`, on the screen.
 
 Click on the different keypad keys. The program displays the key value. This is a good time to learn the key layout, how the keys for `A` to `F` are wrapped around the decimal numbers.
 
