@@ -5,9 +5,9 @@
 
 CHIP8IDE is an *interactive development environment* used to write programs for the *CHIP-8 virtual machine*.
 
-CHIP-8 is a virtual machine architecture that was designed for a microcomputer kit released in 1977. Its purpose was to let hobbyists write game programs for their single-board kit computer without having to learn the details of the hardware. In the years since, many people have written emulators for the CHIP-8 so programs written for it could run on later hardware.
+CHIP-8 is a virtual machine architecture that was designed for a microcomputer kit released in 1977. Later in this article there is a history of that kit, the COSMAC VIP. It comprised a CPU chip, 4K of memory, a 16-button keypad, and an interface to drive a standard-def TV screen to display an array of white pixels on black.
 
-CHIP8IDE contains an emulator for executing CHIP-8 code, and it also offers tools for entry, editing, assembly, disassembly, and debugging CHIP-8 programs.
+The purpose of the CHIP-8 VM was to let hobbyists write game programs for their tiny kit computer in a simplified language, without having to learn all the details of the hardware. In the years since, many people have written emulators for the CHIP-8 so programs written for it could run on later hardware. This package contains an emulator for executing CHIP-8 code, and offers tools for entry, editing, assembly, disassembly, and debugging CHIP-8 programs.
 
 The CHIP-8 machine is programmed using an *assembly language*. That means you program the hardware by writing individual machine instructions to manipulate binary values in the machine's registers and memory. To create output you write instructions that draw pixels on the screen. To get input you write instructions that read the state of the keypad buttons. You control the flow of execution by writing conditional jump instructions.
 
