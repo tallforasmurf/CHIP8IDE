@@ -81,7 +81,7 @@ In the instructions below,
 * *nybble* means, any expression with a value between 0 and 15 (`#0` to `#F`)
 * *byte* means, any expression with a value between 0 and 255 (`#0` to `#FF`)
 * *address* means, any expression with a value between 0 and 4095 (`#0` to `#FFF`)
-* *word* means, any expression with a value between 0 and 16535 (`#0` to `FFFF`)
+* *word* means, any expression with a value between 0 and 65535 (`#0` to `FFFF`)
 
 ## Directives
 
@@ -153,10 +153,10 @@ Skip the following instruction if the contents of **V***s* equal *byte*. (3sbb)
 Skip the following instruction if the contents of **V***s* do not equal *byte*. (4sbb)
 
 **SE** **V***x*, **V***y*  
-Skip the following instruction if the contents of **V***x* equal those of **V***x*. (5xy0)
+Skip the following instruction if the contents of **V***x* equal those of **V***y*. (5xy0)
 
 **SNE** **V***x*, **V***y*  
-Skip the following instruction if the contents of **V***x* do not equal those of **V***x*. (9xy0)
+Skip the following instruction if the contents of **V***x* do not equal those of **V***y*. (9xy0)
 
 **SKP** **V***s*  
 Skip the following instruction if the key (0-15) specified by **V***s* is down (being pressed). Only the low four bits of **V***s* are used. This only samples the keypad; the pressed key (if any) is not cleared. (Es9E)
