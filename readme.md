@@ -288,7 +288,7 @@ The internet is just stuffed with information about the CHIP-8, including many w
 
 * The [COSMAC VIP page](http://www.oldcomputers.net/rca-cosmac-vip.html) at OldComputers.net has good pictures of the original machine.
 
-* A full online copy of the original [COSMAC VIP manual](http://www.mirrorservice.org/sites/www.bitsavers.org/pdf/rca/cosmac/)   documents the entire single-board computer in detail, including its hardware and ROM. The VIP manual distributed with CHIP8IDE was extracted from this source. (Another [online copy](https://www.manualslib.com/manual/602113/Rca-Cdp18s711.html) is incomplete, lacking most of the pages with CHIP-8 game listings.)
+* A full online copy of the original [COSMAC VIP manual](https://archive.org/details/bitsavers_rcacosmacCManual1978_6956559) documents the entire single-board computer in detail, including its hardware and ROM.
 
 * [BYTE magazine for December 1978](https://ia802700.us.archive.org/7/items/byte-magazine-1978-12/1978_12_BYTE_03-12_Life.pdf) (large PDF) contains the article by Joseph Weisbecker describing CHIP-8. A copy of this article is distributed with CHIP8IDE.
 
@@ -298,7 +298,7 @@ The internet is just stuffed with information about the CHIP-8, including many w
 
 * [Mastering CHIP-8](http://mattmik.com/files/chip8/mastering/chip8.html), an essay by Matthew Mikolay, has a good technical description of the CHIP-8 but omits the SCHIP features.
 
-* [Matthew Mikolay's Retrocomputing page](http://retro.mattmik.com/) has documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*.
+* [Matthew Mikolay's Retrocomputing page](http://mattmik.com/retro.html) has documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*.
 
 * [*VIPer* issue 1](http://www.mattmik.com/files/viper/Volume1Issue01.pdf) has a lengthy review of the CHIP-8 instructions with a tutorial.
 
@@ -309,17 +309,13 @@ archives](http://www.hpcalc.org/details/6735). The C source of CHIPPER
 is completely uncommented, but the CHIPPER.DOC file included with it has a
 good review of the instructions.
 
-David Winter created a CHIP-8 emulator for MS-DOS. His CHIP-8
-page has the source of Egeberg's CHIPPER, and the source and/or executable of a number of CHIP-8 and SCHIP games. Although the source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents the instruction set. I have used the games from this page as test vehicles and have included some of them in the `extras` folder.
+David Winte created a CHIP-8 emulator for MS-DOS. His CHIP-8
+pager (link above) has the source of Egeberg's CHIPPER, and the source and/or executable of a number of CHIP-8 and SCHIP games. Although the source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents the instruction set. I have used the games from this page as test vehicles and have included some of them in the `extras` folder.
 
 Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is
 an elegantly coded CHIP-8 emulator in Python. I followed his method of dispatching decoded instructions. (But his does SHR/SHL incorrectly.)
 
-"Mudlord" (Brad Miller) wrote a
-[CHIP-8/SCHIP emulator in C++](https://github.com/mudlord/maxe)
-which I have consulted. (It too has the SHR/SHL instructions wrong.)
-
-Jeffrey Bian wrote [MOCHI-8](http://mochi8.weebly.com/), a CHIP-8 assembler, disassembler, and emulator, all in Java. I have followed his assembly language syntax, and I referred to his code and documentation in creating the assembler and disassembler in this project. (But his emulator also has the SHL/SHR instructions wrong.)
+Jeffrey Bian wrote MOCHI-8 (no longer accessible), a CHIP-8 assembler, disassembler, and emulator, all in Java. I have followed his assembly language syntax, and I referred to his code and documentation in creating the assembler and disassembler in this project. (But his emulator also has the SHL/SHR instructions wrong.)
 
 Github user "mir3z" has a [JavaScript CHIP-8 emulator](https://github.com/mir3z/chip8-emu) which I did not actually read. However, the [rom folder](https://github.com/mir3z/chip8-emu/tree/master/roms) at that site is stuffed with many S/CHIP-8 executable files.
 
