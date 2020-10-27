@@ -470,7 +470,7 @@ def phase_one( statement_text: str, S : Statement ) :
         match.group() is the text that was actually matched to the regex.
         '''
 
-        token_type = match.lastgroup
+        token_type = match.lastgroup() # how did this hang around so long?
         token_value = match.group( token_type )
 
         '''
