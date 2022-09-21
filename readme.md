@@ -230,11 +230,11 @@ Weisbecker set out to flatten the steep learning curve by designing a much simpl
 
 Weisbecker hoped that the CHIP-8 architecture and language were simple enough that users could get enjoyment out of creating simple game programs for the VIP. He first described CHIP-8 in the manual that shipped with the kit when it was released in 1977. (This manual is included in the `extras` folder.) A year later, an article by Weisbecker was published in *BYTE* magazine describing CHIP-8, including a sample game program. (A copy of this article is also in the `extras` folder.)
 
-The COSMAC VIP sold well enough to create an active community of users who kept in touch through a fanzine, *VIPer*, which published 39 issues between 1978 and 1984. You can read all the issues of *VIPer* at [Matthew Mikolai's Archive site](http://retro.mattmik.com/documents.html). They contain a number of contributed programs for the VIP.
+The COSMAC VIP sold well enough to create an active community of users who kept in touch through a fanzine, *VIPer*, which published 39 issues between 1978 and 1984. You can read all issues of *VIPer* via [Matthew Mikolai's retro page](https://mattmik.com/retro.html).
 
 ### The HP-48 and SCHIP
 
-In the years following, many people wrote [extended versions of CHIP-8](http://www.mattmik.com/files/chip8/extensions/CHIP8ExtensionsReference.pdf) for various hardware platforms.
+In the years following, many people wrote extended versions of CHIP-8 for various hardware platforms.
 
 In 1990, Hewlett-Packard released the [HP-48 Graphing Calculator](https://en.wikipedia.org/wiki/HP_48_series). It had a black on white screen of 131x64 pixels. [Andreas Gustafsson](http://www.hpcalc.org/authors/375) wrote a CHIP-8 emulator for this machine so that users could write and play the kinds of simple games that the CHIP-8 language made easy. He added support for the double-size 64x128 display.
 
@@ -246,13 +246,11 @@ There are three original sources of documentation for CHIP-8: the VIP manual, th
 
 It is impossible to know if that omission was intentional or a mistake. Perhaps the instructions were added in a last-minute update before the VIP shipped.
 
-At any rate, they were soon discovered by fans who reverse-engineered the 512-byte machine language emulator program out of curiosity. The first description of the added instructions appeared in [*VIPer* issue 2](http://www.mattmik.com/files/viper/Volume1Issue02.pdf) in a letter to the editor from Peter K. Morrison that describes the operation of the emulator. (The same issue has another analysis of the emulator code, with flowcharts. These were diligent hobbyists!)
+At any rate, they were soon discovered by fans who reverse-engineered the 512-byte machine language emulator program out of curiosity. The first description of the added instructions appeared in [*VIPer* issue 2](https://archive.org/details/viper_1_02) in a letter to the editor from Peter K. Morrison that describes the operation of the emulator. (The same issue has another analysis of the emulator code, with flowcharts. These were diligent hobbyists!)
 
 Morrison's letter correctly describes the operation of the SHR and SHL instructions: the value from the source register, V*s*, is shifted one bit left or right and the result is placed in the target register V*t* (`Vt = Vs<<1` and `Vt = Vs>>1`).
 
 Somehow this became lost over time and an incorrect interpretation has propogated online which assumes that the value was shifted in-place (`Vs = Vs<<1` etc). This may have been because most programs that used the instructions *intended* for the shift to happen in-place, so they coded the same register number for V*t* and V*s* (e.g. `SL V5,V5`). At least two of the emulators I've looked at have this incorrect implementation, and CowGod's influential CHIP-8 Technical Reference also has it wrong.
-
-The correct interpretation of the shift instructions was clarified in a recent exchange at the [Yahoo VIP Group](https://groups.yahoo.com/neo/groups/rcacosmac/conversations/messages/328).
 
 ## <a name='PY'></a> CHIP8IDE design
 
@@ -274,7 +272,7 @@ These are the source modules in the order you might want to read them.
 
 * [disassemble.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/disassemble.py) performs the disassembly of a binary file. It is interesting to compare this to `chip8.py`; they both decode the same binary instruction values, one to execute them and one to convert them to source.
 
-* [display.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/display.py) implements the Display window with its emulated screen and keypad. Like `source.py` it is a whole lot PyQt5 class definitions.
+* [display.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/display.py) implements the Display window with its emulated screen and keypad. Like `source.py` it is a whole lot of PyQt5 class definitions.
 
 * [memory.py](https://github.com/tallforasmurf/CHIP8IDE/blob/master/memory.py) is the code that actually runs the emulator. The bulk of it is code to create and manage three Qt Tables using Qt's Model-View architecture. The tables display memory, the call stack, and the registers. Down at the bottom is the [asynchronous QThread](https://github.com/tallforasmurf/CHIP8IDE/blob/master/memory.py#L1031) that runs when you click the RUN button, so the CHIP-8 emulator can go full speed while Qt still handles mouse clicks and keyboard actions.
 
@@ -298,9 +296,9 @@ The internet is just stuffed with information about the CHIP-8, including many w
 
 * [Mastering CHIP-8](http://mattmik.com/files/chip8/mastering/chip8.html), an essay by Matthew Mikolay, has a good technical description of the CHIP-8 but omits the SCHIP features.
 
-* [Matthew Mikolay's Retrocomputing page](http://mattmik.com/retro.html) has documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*.
+* [Matthew Mikolay's Retrocomputing page](http://mattmik.com/retro.html) has useful documents, some program sources, and PDF copies of  all issues of the fanzine *VIPer*.
 
-* [*VIPer* issue 1](http://www.mattmik.com/files/viper/Volume1Issue01.pdf) has a lengthy review of the CHIP-8 instructions with a tutorial.
+* [*VIPer* issue 1](https://archive.org/details/viper_1_02) has a lengthy review of the CHIP-8 instructions with a tutorial.
 
 There are many CHIP-8 emulators to be found around the internet. Writing one is a favorite project for people studying computer science. I have seen several of these, but in creating CHIP8IDE I have taken explanations, ideas, and some code from following:
 
@@ -309,11 +307,9 @@ archives](http://www.hpcalc.org/details/6735). The C source of CHIPPER
 is completely uncommented, but the CHIPPER.DOC file included with it has a
 good review of the instructions.
 
-David Winte created a CHIP-8 emulator for MS-DOS. His CHIP-8
-pager (link above) has the source of Egeberg's CHIPPER, and the source and/or executable of a number of CHIP-8 and SCHIP games. Although the source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents the instruction set. I have used the games from this page as test vehicles and have included some of them in the `extras` folder.
+David Winter created a CHIP-8 emulator for MS-DOS. His CHIP-8 page (link above) has the source of Egeberg's CHIPPER, and the source and/or executable of a number of CHIP-8 and SCHIP games. Although the source of his own emulator CHIP8.EXE is not included, his CHIP8.DOC file also documents the instruction set. I have used the games from this page as test vehicles and have included some of them in the `extras` folder.
 
-Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is
-an elegantly coded CHIP-8 emulator in Python. I followed his method of dispatching decoded instructions. (But his does SHR/SHL incorrectly.)
+Craig Thomas's [Chip8Python](https://github.com/craigthomas/Chip8Python) is an elegantly coded CHIP-8 emulator in Python. I followed his method of dispatching decoded instructions. (But his does SHR/SHL incorrectly.)
 
 Jeffrey Bian wrote MOCHI-8 (no longer accessible), a CHIP-8 assembler, disassembler, and emulator, all in Java. I have followed his assembly language syntax, and I referred to his code and documentation in creating the assembler and disassembler in this project. (But his emulator also has the SHL/SHR instructions wrong.)
 
